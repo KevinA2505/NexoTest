@@ -6,9 +6,17 @@ import { ARENA_WIDTH, ARENA_HEIGHT } from '../constants';
 interface ArenaProps {
   state: GameState;
   onDeploy: (x: number, y: number) => void;
+  dragPreview?: {
+    x: number;
+    y: number;
+    cardRange: number;
+    color: string;
+    isValid: boolean;
+  } | null;
+  onBoundsChange?: (rect: DOMRect) => void;
 }
 
-const Arena: React.FC<ArenaProps> = ({ state, onDeploy }) => {
+const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const starField = useMemo(() => {
@@ -489,6 +497,21 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy }) => {
       }
       ctx.restore();
     });
+
+    if (dragPreview) {
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = dragPreview.isValid ? `${dragPreview.color}33` : 'rgba(255,255,255,0.05)';
+      ctx.strokeStyle = dragPreview.isValid ? dragPreview.color : '#ff3366';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.arc(dragPreview.x, dragPreview.y, dragPreview.cardRange, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
   };
 
   const drawHPBar = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, hp: number, max: number) => {
@@ -517,7 +540,19 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy }) => {
     const render = () => { draw(ctx); frameId = requestAnimationFrame(render); };
     frameId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frameId);
-  }, [state]);
+  }, [state, dragPreview]);
+
+  useEffect(() => {
+    if (!canvasRef.current || !onBoundsChange) return;
+    const updateBounds = () => {
+      if (canvasRef.current && onBoundsChange) {
+        onBoundsChange(canvasRef.current.getBoundingClientRect());
+      }
+    };
+    updateBounds();
+    window.addEventListener('resize', updateBounds);
+    return () => window.removeEventListener('resize', updateBounds);
+  }, [onBoundsChange]);
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     const canvas = canvasRef.current;

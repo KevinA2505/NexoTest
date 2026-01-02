@@ -36,6 +36,13 @@ const App: React.FC = () => {
   });
 
   const [selectedCardIdx, setSelectedCardIdx] = useState<number | null>(null);
+  const [dragState, setDragState] = useState<{
+    idx: number;
+    card: Card;
+    position: { x: number; y: number } | null;
+    overArena: boolean;
+  } | null>(null);
+  const [arenaBounds, setArenaBounds] = useState<DOMRect | null>(null);
   const gameLoopRef = useRef<number>(undefined);
 
   const triggerCommanderAbility = () => {
@@ -161,21 +168,25 @@ const App: React.FC = () => {
   }, []);
 
   const handlePlayerDeploy = (x: number, y: number) => {
-    if (selectedCardIdx === null || gameState.status !== 'PLAYING') return;
-    
-    const cardId = gameState.playerHand[selectedCardIdx];
-    const card = CARD_LIBRARY.find(c => c.id === cardId);
-    
-    if (card?.type !== UnitType.SPELL && x > ARENA_WIDTH / 2) return;
+    if (selectedCardIdx === null) return;
+    attemptDeployCard(selectedCardIdx, x, y);
+  };
 
-    if (card && gameState.playerEnergy >= card.cost) {
+  const attemptDeployCard = useCallback((cardIdx: number, x: number, y: number) => {
+      const cardId = gameState.playerHand[cardIdx];
+      const card = CARD_LIBRARY.find(c => c.id === cardId);
+      if (!card) return false;
+      if (gameState.status !== 'PLAYING') return false;
+      if (card.type !== UnitType.SPELL && x > ARENA_WIDTH / 2) return false;
+      if (gameState.playerEnergy < card.cost) return false;
+
       spawnUnits(cardId, Team.PLAYER, x, y);
       
       setGameState(prev => {
         const nextInDeck = prev.playerDeck[0];
         const newDeck = [...prev.playerDeck.slice(1), cardId];
         const newHand = [...prev.playerHand];
-        newHand[selectedCardIdx] = nextInDeck;
+        newHand[cardIdx] = nextInDeck;
 
         return {
           ...prev,
@@ -185,8 +196,77 @@ const App: React.FC = () => {
         };
       });
       setSelectedCardIdx(null);
-    }
+      return true;
+  }, [gameState, spawnUnits]);
+
+  const isPositionInsideArena = useCallback((clientX: number, clientY: number) => {
+      if (!arenaBounds) return false;
+      return (
+        clientX >= arenaBounds.left &&
+        clientX <= arenaBounds.right &&
+        clientY >= arenaBounds.top &&
+        clientY <= arenaBounds.bottom
+      );
+  }, [arenaBounds]);
+
+  const clientToArenaPosition = useCallback((clientX: number, clientY: number) => {
+      if (!arenaBounds) return null;
+      return {
+        x: (clientX - arenaBounds.left) * (ARENA_WIDTH / arenaBounds.width),
+        y: (clientY - arenaBounds.top) * (ARENA_HEIGHT / arenaBounds.height)
+      };
+  }, [arenaBounds]);
+
+  const isValidDrop = useCallback((card: Card, x: number) => {
+      if (card.type !== UnitType.SPELL && x > ARENA_WIDTH / 2) return false;
+      return true;
+  }, []);
+
+  const startCardDrag = (event: React.MouseEvent, idx: number, card: Card | undefined, canAfford: boolean) => {
+    if (!card || !canAfford || gameState.status !== 'PLAYING') return;
+    event.preventDefault();
+    setSelectedCardIdx(idx);
+    const inside = isPositionInsideArena(event.clientX, event.clientY);
+    setDragState({
+      idx,
+      card,
+      position: inside ? clientToArenaPosition(event.clientX, event.clientY) : null,
+      overArena: inside
+    });
   };
+
+  useEffect(() => {
+    if (!dragState) return;
+
+    const handleMove = (e: MouseEvent) => {
+      const arenaPos = clientToArenaPosition(e.clientX, e.clientY);
+      const inside = isPositionInsideArena(e.clientX, e.clientY);
+      setDragState(prev => prev ? ({
+        ...prev,
+        position: inside ? arenaPos : null,
+        overArena: inside
+      }) : prev);
+    };
+
+    const handleUp = (e: MouseEvent) => {
+      const arenaPos = clientToArenaPosition(e.clientX, e.clientY);
+      setDragState(prev => {
+        if (prev && arenaPos && isPositionInsideArena(e.clientX, e.clientY) && isValidDrop(prev.card, arenaPos.x)) {
+          attemptDeployCard(prev.idx, arenaPos.x, arenaPos.y);
+        } else {
+          setSelectedCardIdx(null);
+        }
+        return null;
+      });
+    };
+
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [dragState, clientToArenaPosition, isPositionInsideArena, attemptDeployCard, isValidDrop]);
 
   const handleAIDeploy = (cardId: string, x: number, y: number) => {
     spawnUnits(cardId, Team.AI, x, y);
@@ -292,6 +372,7 @@ const App: React.FC = () => {
               <div
                 key={idx}
                 onClick={() => setSelectedCardIdx(isSelected ? null : idx)}
+                onMouseDown={(e) => startCardDrag(e, idx, card, canAfford)}
                 className={`
                   relative w-full h-28 border transition-all duration-300 flex flex-col justify-between p-2 rounded-md
                   ${isSelected ? 'border-[#00ccff] translate-x-4 shadow-[0_0_25px_rgba(0,204,255,0.3)] bg-[#00ccff]/10' : 'border-[#1a3a5a] bg-[#0a0a0a] hover:border-[#00ccff]/50'}
@@ -382,7 +463,22 @@ const App: React.FC = () => {
 
         <div className="flex-1 flex items-center justify-center w-full overflow-hidden">
           <div className="w-full max-w-[1100px]">
-            <Arena state={gameState} onDeploy={handlePlayerDeploy} />
+            <Arena 
+              state={gameState} 
+              onDeploy={handlePlayerDeploy} 
+              dragPreview={
+                dragState && dragState.position && dragState.card.type !== UnitType.GROUND
+                  ? {
+                      x: dragState.position.x,
+                      y: dragState.position.y,
+                      cardRange: dragState.card.aoeRadius || dragState.card.range,
+                      color: dragState.card.color,
+                      isValid: dragState.overArena && isValidDrop(dragState.card, dragState.position.x)
+                    }
+                  : null
+              }
+              onBoundsChange={setArenaBounds}
+            />
           </div>
         </div>
 
