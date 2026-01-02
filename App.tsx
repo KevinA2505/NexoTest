@@ -56,7 +56,7 @@ const App: React.FC = () => {
         newState.effects.push({
           id: 'global-pulse-' + Math.random(),
           x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2,
-          type: 'emp_wave', timer: 1000, maxTimer: 1000, color: '#00ccff'
+          type: 'emp_wave', timer: 1000, maxTimer: 1000, color: '#00ccff', radius: 400
         });
 
         return {
@@ -118,7 +118,8 @@ const App: React.FC = () => {
             type: 'explosion',
             timer: 800,
             maxTimer: 800,
-            color: card.color
+            color: card.color,
+            radius: card.aoeRadius
           });
           return newState;
         });

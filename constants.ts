@@ -84,13 +84,13 @@ export const CARD_LIBRARY: Card[] = [
     id: 'virus', name: 'Virus Nanita', cost: 4, type: UnitType.SPELL, 
     hp: 0, damage: 22, speed: 0, range: 0, attackSpeed: 0, targetPref: TargetPreference.ANY, count: 1, 
     description: 'Área de daño constante.', flavor: 'Corrosión molecular.',
-    shape: 'circle', color: '#00ff00', isAoE: true, aoeRadius: 220, dotDuration: 5500, projectileType: 'none' 
+    shape: 'circle', color: '#00ff00', isAoE: true, aoeRadius: 170, dotDuration: 6000, projectileType: 'none' 
   },
   { 
     id: 'emp', name: 'Pulso EMP', cost: 4, type: UnitType.SPELL, 
     hp: 0, damage: 105, speed: 0, range: 0, attackSpeed: 0, targetPref: TargetPreference.ANY, count: 1, 
     description: 'Aturde enemigos en área.', flavor: 'Sobrecarga circuitos.',
-    shape: 'circle', color: '#00ffff', isAoE: true, aoeRadius: 250, stunDuration: 3200, projectileType: 'none' 
+    shape: 'circle', color: '#00ffff', isAoE: true, aoeRadius: 170, stunDuration: 3600, projectileType: 'none' 
   },
   { 
     id: 'tank', name: 'Tanque de Asalto', cost: 4, type: UnitType.GROUND, 
@@ -144,13 +144,13 @@ export const CARD_LIBRARY: Card[] = [
     id: 'cryo_blast', name: 'Criogenización', cost: 3, type: UnitType.SPELL, 
     hp: 0, damage: 50, speed: 0, range: 0, attackSpeed: 0, targetPref: TargetPreference.ANY, count: 1, 
     description: 'Ralentiza y daña levemente.', flavor: 'Cero absoluto en un radio táctico.',
-    shape: 'circle', color: '#aaffff', isAoE: true, aoeRadius: 200, stunDuration: 4000, projectileType: 'none' 
+    shape: 'circle', color: '#aaffff', isAoE: true, aoeRadius: 160, stunDuration: 4200, projectileType: 'none' 
   },
   { 
     id: 'napalm_strike', name: 'Lluvia de Napalm', cost: 5, type: UnitType.SPELL, 
     hp: 0, damage: 45, speed: 0, range: 0, attackSpeed: 0, targetPref: TargetPreference.ANY, count: 1, 
     description: 'Daño masivo por quemadura (DoT).', flavor: 'El vacío no detendrá el fuego.',
-    shape: 'triangle', color: '#ff4400', isAoE: true, aoeRadius: 280, dotDuration: 8000, projectileType: 'none' 
+    shape: 'triangle', color: '#ff4400', isAoE: true, aoeRadius: 180, dotDuration: 9000, projectileType: 'none' 
   },
   { 
     id: 'orbital_laser', name: 'Rayo Orbital', cost: 6, type: UnitType.SPELL, 
@@ -162,7 +162,7 @@ export const CARD_LIBRARY: Card[] = [
     id: 'healing_matrix', name: 'Matriz de Sanación', cost: 4, type: UnitType.SPELL, 
     hp: 0, damage: -120, speed: 0, range: 0, attackSpeed: 1000, targetPref: TargetPreference.ALLIES, count: 1, 
     description: 'Cura aliada en área por 5s.', flavor: 'Bruma de nanobots regeneradores.',
-    shape: 'circle', color: '#32cd32', isAoE: true, aoeRadius: 180, projectileType: 'none' 
+    shape: 'circle', color: '#32cd32', isAoE: true, aoeRadius: 170, projectileType: 'none' 
   }
 ];
 
