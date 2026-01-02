@@ -430,8 +430,9 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
       ctx.shadowColor = ef.color;
       
       if (ef.type === 'explosion') {
-        ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * 80, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.stroke();
-        ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * 40, 0, Math.PI * 2); ctx.fill();
+        const baseRadius = ef.radius || 80;
+        ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * baseRadius, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.stroke();
+        ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * (baseRadius * 0.5), 0, Math.PI * 2); ctx.fill();
       } else if (ef.type === 'shockwave') {
         ctx.lineWidth = 5;
         ctx.setLineDash([10, 5]);
@@ -446,7 +447,8 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
       } else if (ef.type === 'spark') {
         ctx.beginPath(); ctx.arc(ef.x, ef.y, 4, 0, Math.PI * 2); ctx.fill();
       } else if (ef.type === 'emp_wave') {
-        ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * 400, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.stroke();
+        const radius = ef.radius || 400;
+        ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * radius, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.stroke();
       } else if (ef.type === 'healing_field') {
         // Renderizado de la Matriz de Sanación (Verde Lima + Partículas)
         const time = Date.now();

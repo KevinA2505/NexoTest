@@ -85,7 +85,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             type: ps.cardId === 'orbital_laser' ? 'emp_wave' : 'explosion',
             timer: 800,
             maxTimer: 800,
-            color: card.color
+            color: card.color,
+            radius: card.aoeRadius
           });
         }
       }
