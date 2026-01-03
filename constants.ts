@@ -7,6 +7,19 @@ export const MAX_ENERGY = 10;
 export const BASE_ENERGY_GAIN_RATE = 0.015;
 export const GAME_DURATION = 180; // 3 minutos en segundos
 
+export const MOTHERSHIP_BALANCE = {
+  cost: 8,
+  hpRatioFromOuter: 0.5,
+  speed: 0.65,
+  collisionRadius: 30,
+  damage: 115,
+  range: 210,
+  attackSpeed: 1200,
+  baseCooldownMs: 7000,
+  cooldownPerCostMs: 1000,
+  color: '#9ae6ff' as const
+};
+
 export const EMP_ABILITY_BALANCE = {
   cost: 3,
   radius: 260,
@@ -205,6 +218,9 @@ export const INITIAL_TOWERS_AI = [
   { type: TowerType.OUTER, x: ARENA_WIDTH - 460, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
 ];
 
+export const OUTER_TOWER_HP = INITIAL_TOWERS_PLAYER.find(t => t.type === TowerType.OUTER)?.hp || 0;
+export const MOTHERSHIP_HP = Math.round(OUTER_TOWER_HP * MOTHERSHIP_BALANCE.hpRatioFromOuter);
+
 export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
   {
     id: 'emp_overwatch',
@@ -239,37 +255,23 @@ export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
     id: 'mothership_command',
     name: 'Llamado de Nave Nodriza',
     badge: 'Apoyo',
-    description: 'Despliega una nave insignia para reforzar la línea y absorber daño inicial.',
-    cost: 5,
-    cooldown: 32,
+    description: 'Despliega una nave insignia lenta con tropas embarcadas para abrir camino.',
+    cost: MOTHERSHIP_BALANCE.cost,
+    cooldown: Math.floor(MOTHERSHIP_BALANCE.baseCooldownMs / 1000),
     options: [
       {
-        key: 'escort',
-        label: 'Escolta de drones',
-        description: 'Cantidad de drones ligeros que acompañan al despliegue.',
-        type: 'slider',
-        min: 2,
-        max: 8,
-        step: 1,
-        defaultValue: 4
-      },
-      {
-        key: 'shieldMode',
-        label: 'Modo de escudo',
-        description: 'Prioriza burbuja defensiva o reflector de daño.',
+        key: 'hangarUnit',
+        label: 'Carga de Hangar',
+        description: 'Tropa embarcada que se despliega junto a la nave insignia.',
         type: 'select',
-        choices: [
-          { value: 'bulwark', label: 'Bastión', hint: 'Absorbe daño frontal adicional.' },
-          { value: 'prism', label: 'Prisma', hint: 'Devuelve un porcentaje del daño recibido.' }
-        ],
-        defaultValue: 'bulwark'
-      },
-      {
-        key: 'autoRepair',
-        label: 'Auto-reparación',
-        description: 'Activa nanobots de curación lenta en la nave insignia.',
-        type: 'toggle',
-        defaultValue: false
+        choices: CARD_LIBRARY
+          .filter(c => c.type !== UnitType.SPELL)
+          .map(c => ({
+            value: c.id,
+            label: `${c.name} · ${c.cost}⚡`,
+            hint: c.description
+          })),
+        defaultValue: CARD_LIBRARY.find(c => c.type !== UnitType.SPELL)?.id
       }
     ]
   }

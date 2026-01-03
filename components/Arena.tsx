@@ -47,7 +47,7 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     ctx.shadowColor = baseColor;
     ctx.lineWidth = 2;
 
-    const size = unit.type === UnitType.AIR ? 12 : 10;
+    const size = unit.isMothership ? 18 : (unit.type === UnitType.AIR ? 12 : 10);
     
     ctx.save();
     ctx.translate(unit.x, unit.y);
@@ -66,6 +66,17 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
 
     if (unit.type === UnitType.AIR) {
         ctx.translate(0, Math.sin(Date.now() / 300) * 5);
+    }
+
+    if (unit.isMothership) {
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.arc(0, 0, size + 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
 
     ctx.beginPath();

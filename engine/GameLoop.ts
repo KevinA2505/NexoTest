@@ -21,7 +21,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   newState.aiEnergy = Math.min(MAX_ENERGY, newState.aiEnergy + currentEnergyRate);
 
   if (newState.commanderAbilityCooldown > 0) {
-    newState.commanderAbilityCooldown -= deltaTime;
+    newState.commanderAbilityCooldown = Math.max(0, newState.commanderAbilityCooldown - deltaTime);
   }
 
   if (timeRemaining <= 0 && newState.status === 'PLAYING') {
@@ -180,9 +180,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         newState.units.forEach(other => {
             if (other.id !== updatedUnit.id && !other.isDead && other.team === updatedUnit.team) {
                 const d = Math.hypot(other.x - updatedUnit.x, other.y - updatedUnit.y);
-                if (d < 22) {
-                    vx -= (other.x - updatedUnit.x) * 0.1;
-                    vy -= (other.y - updatedUnit.y) * 0.1;
+                const minDistance = (updatedUnit.collisionRadius ?? 22) + (other.collisionRadius ?? 22);
+                if (d < minDistance) {
+                    const repulsion = 0.1 * (minDistance / 22);
+                    vx -= (other.x - updatedUnit.x) * repulsion;
+                    vy -= (other.y - updatedUnit.y) * repulsion;
                 }
             }
         });

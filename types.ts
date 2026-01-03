@@ -75,6 +75,9 @@ export interface GameUnit {
   dotTimer: number;
   projectileType: ProjectileStyle;
   isOverclocked?: boolean; // Bonus de evolución
+  collisionRadius?: number;
+  isMothership?: boolean;
+  payloadCardId?: string;
 }
 
 export interface Tower {
