@@ -1,11 +1,15 @@
 
 import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell } from '../types';
-import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY } from '../constants';
+import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 
-const BRIDGE_X = ARENA_WIDTH / 2;
-const BRIDGE_TOP_Y = ARENA_HEIGHT / 2 - 190;
-const BRIDGE_BOT_Y = ARENA_HEIGHT / 2 + 190;
+const BRIDGE_CENTERS = [BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y];
+
+const isWithinBridgeGap = (y: number) => BRIDGE_CENTERS.some(center => Math.abs(center - y) <= BRIDGE_GAP_HALF);
+
+const nearestBridgeCenter = (y: number) => BRIDGE_CENTERS.reduce((closest, current) => {
+  return Math.abs(current - y) < Math.abs(closest - y) ? current : closest;
+});
 
 export const updateGame = (state: GameState, deltaTime: number): GameState => {
   const newState = { ...state };
@@ -182,14 +186,31 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
         const isPlayer = updatedUnit.team === Team.PLAYER;
         const bridgeX = BRIDGE_X;
-        const bridgeY = updatedUnit.lane === 'TOP' ? BRIDGE_TOP_Y : BRIDGE_BOT_Y;
+        const bridgeY = updatedUnit.lane === 'TOP' ? BRIDGE_TOP_Y : BRIDGE_BOTTOM_Y;
+        const isAirUnit = updatedUnit.type === UnitType.AIR;
 
         const onOurSide = isPlayer ? updatedUnit.x < bridgeX - 50 : updatedUnit.x > bridgeX + 50;
         const targetOnTheirSide = isPlayer ? target.x > bridgeX : target.x < bridgeX;
 
-        if (onOurSide && targetOnTheirSide && updatedUnit.type !== UnitType.AIR) {
+        if (onOurSide && targetOnTheirSide && !isAirUnit) {
             moveX = bridgeX;
             moveY = bridgeY;
+        }
+
+        if (!isAirUnit) {
+          const crossesWall = (updatedUnit.x - bridgeX) * (moveX - bridgeX) < 0;
+          const aimingAtBarrier = Math.abs(moveX - bridgeX) < 0.0001 && !isWithinBridgeGap(moveY);
+
+          if (crossesWall) {
+            const t = (bridgeX - updatedUnit.x) / (moveX - updatedUnit.x);
+            const crossingY = updatedUnit.y + (moveY - updatedUnit.y) * t;
+            if (!isWithinBridgeGap(crossingY)) {
+              moveX = bridgeX;
+              moveY = nearestBridgeCenter(crossingY);
+            }
+          } else if (aimingAtBarrier) {
+            moveY = nearestBridgeCenter(moveY);
+          }
         }
 
         const angle = Math.atan2(moveY - updatedUnit.y, moveX - updatedUnit.x);

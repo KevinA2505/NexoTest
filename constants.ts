@@ -6,6 +6,10 @@ export const ARENA_HEIGHT = 675;
 export const MAX_ENERGY = 10;
 export const BASE_ENERGY_GAIN_RATE = 0.015;
 export const GAME_DURATION = 180; // 3 minutos en segundos
+export const BRIDGE_X = ARENA_WIDTH / 2;
+export const BRIDGE_TOP_Y = ARENA_HEIGHT / 2 - 190;
+export const BRIDGE_BOTTOM_Y = ARENA_HEIGHT / 2 + 190;
+export const BRIDGE_GAP_HALF = 100;
 
 export const MOTHERSHIP_BALANCE = {
   cost: 8,

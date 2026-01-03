@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
 import { GameState, Team, TowerType, UnitType } from '../types';
-import { ARENA_WIDTH, ARENA_HEIGHT } from '../constants';
+import { ARENA_WIDTH, ARENA_HEIGHT, BRIDGE_GAP_HALF, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_X } from '../constants';
 
 interface ArenaProps {
   state: GameState;
@@ -237,10 +237,10 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
   };
 
   const drawPlasmaBarrier = (ctx: CanvasRenderingContext2D) => {
-    const centerX = ARENA_WIDTH / 2;
-    const bridgeGap = 100;
-    const topBridgeY = ARENA_HEIGHT / 2 - 190;
-    const botBridgeY = ARENA_HEIGHT / 2 + 190;
+    const centerX = BRIDGE_X;
+    const bridgeGap = BRIDGE_GAP_HALF;
+    const topBridgeY = BRIDGE_TOP_Y;
+    const botBridgeY = BRIDGE_BOTTOM_Y;
     const time = Date.now();
     const pulse = Math.sin(time / 150) * 0.2 + 0.8;
     ctx.save();
