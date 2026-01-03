@@ -133,7 +133,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   };
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-[200] p-8 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/95 z-[200] p-4 md:p-8 flex items-start justify-center overflow-y-auto">
       <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 bg-[#050505] border border-[#1a3a5a] rounded p-4 flex flex-col gap-3">
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
