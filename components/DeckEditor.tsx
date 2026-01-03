@@ -1,15 +1,17 @@
 
 import React from 'react';
-import { CARD_LIBRARY } from '../constants';
-import { UnitType } from '../types';
+import { CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
+import { SelectedSpecialAbility, UnitType } from '../types';
 
 interface DeckEditorProps {
   selection: string[];
   onUpdate: (newSelection: string[]) => void;
   onClose: () => void;
+  onOpenAbilityModal: () => void;
+  selectedAbility: SelectedSpecialAbility;
 }
 
-const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose }) => {
+const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, onOpenAbilityModal, selectedAbility }) => {
   const toggleCard = (id: string) => {
     if (selection.includes(id)) {
       onUpdate(selection.filter(cid => cid !== id));
@@ -27,6 +29,8 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose })
     if (type) acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const ability = findAbilityById(selectedAbility.id) || SPECIAL_ABILITIES[0];
 
   return (
     <div className="fixed inset-0 bg-black/98 z-[150] p-6 flex flex-col items-center animate-in fade-in duration-300">
@@ -48,6 +52,36 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose })
         {/* Statistics Sidebar */}
         <div className="lg:col-span-1 bg-[#050505] border border-[#1a3a5a] p-6 rounded flex flex-col gap-6 h-fit">
           <h3 className="text-[#00ccff] font-bold text-sm uppercase border-b border-white/5 pb-2">Análisis de Mazo</h3>
+
+          <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase text-white/60">Habilidad Especial</span>
+              <span className="text-[10px] font-black text-[#00ccff] px-2 py-0.5 border border-[#00ccff]/40 rounded">
+                {ability.badge || 'Núcleo'}
+              </span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-white">{ability.name}</span>
+              <p className="text-[10px] text-white/50 leading-relaxed">{ability.description}</p>
+            </div>
+            <div className="flex items-center gap-3 text-[10px] text-white/60 uppercase">
+              <span className="flex items-center gap-1"><span className="text-[#00ccff] font-black">{ability.cost}⚡</span> activación</span>
+              <span className="flex items-center gap-1"><span className="text-[#00ccff] font-black">{ability.cooldown}s</span> enfriamiento</span>
+            </div>
+            <div className="flex flex-wrap gap-1 text-[9px] text-white/50">
+              {Object.entries(selectedAbility.configuration).map(([key, value]) => (
+                <span key={key} className="px-2 py-1 bg-white/5 rounded border border-white/10 capitalize">
+                  {key}: <strong className="text-[#00ccff]">{String(value)}</strong>
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={onOpenAbilityModal}
+              className="mt-2 w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest border border-[#00ccff]/60 text-[#00ccff] hover:bg-[#00ccff] hover:text-black transition"
+            >
+              Configurar habilidad
+            </button>
+          </div>
           
           <div className="flex flex-col">
             <span className="text-white/40 text-[9px] uppercase">Coste Medio</span>

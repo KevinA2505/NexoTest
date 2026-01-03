@@ -161,3 +161,32 @@ export interface GameState {
   difficulty: number;
   commanderAbilityCooldown: number; // Enfriamiento de la habilidad especial
 }
+
+export type SpecialAbilityOptionType = 'toggle' | 'slider' | 'select';
+
+export interface SpecialAbilityOption {
+  key: string;
+  label: string;
+  description: string;
+  type: SpecialAbilityOptionType;
+  min?: number;
+  max?: number;
+  step?: number;
+  choices?: { value: string; label: string; hint?: string }[];
+  defaultValue?: string | number | boolean;
+}
+
+export interface SpecialAbilityBlueprint {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+  cooldown: number;
+  badge?: string;
+  options: SpecialAbilityOption[];
+}
+
+export interface SelectedSpecialAbility {
+  id: string;
+  configuration: Record<string, string | number | boolean>;
+}

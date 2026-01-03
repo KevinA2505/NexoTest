@@ -1,5 +1,5 @@
 
-import { Card, UnitType, TargetPreference, TowerType } from './types';
+import { Card, UnitType, TargetPreference, TowerType, SpecialAbilityBlueprint } from './types';
 
 export const ARENA_WIDTH = 1200;
 export const ARENA_HEIGHT = 675;
@@ -181,3 +181,96 @@ export const INITIAL_TOWERS_AI = [
   { type: TowerType.OUTER, x: ARENA_WIDTH - 460, y: ARENA_HEIGHT / 2 - 180, hp: 2040, range: 270, damage: 90, lane: 'TOP' },
   { type: TowerType.OUTER, x: ARENA_WIDTH - 460, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
 ];
+
+export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
+  {
+    id: 'emp_overwatch',
+    name: 'Pulso EMP de Saturación',
+    badge: 'Control',
+    description: 'Desactiva unidades robóticas y ralentiza sistemas durante una ventana crítica.',
+    cost: 3,
+    cooldown: 24,
+    options: [
+      {
+        key: 'radius',
+        label: 'Radio de descarga',
+        description: 'Ajusta el alcance del pulso antes de que se disipe.',
+        type: 'slider',
+        min: 140,
+        max: 320,
+        step: 20,
+        defaultValue: 200
+      },
+      {
+        key: 'dampening',
+        label: 'Amortiguación de energía',
+        description: 'Aplica una breve reducción de daño en lugar de daño plano.',
+        type: 'toggle',
+        defaultValue: true
+      },
+      {
+        key: 'detonation',
+        label: 'Secuencia de detonación',
+        description: 'Escoge la prioridad del pulso.',
+        type: 'select',
+        choices: [
+          { value: 'focused', label: 'Enfoque a núcleos', hint: 'Mayor aturdimiento en unidades élite.' },
+          { value: 'wide', label: 'Dispersión', hint: 'Cobertura más amplia, menos intensidad.' }
+        ],
+        defaultValue: 'focused'
+      }
+    ]
+  },
+  {
+    id: 'mothership_command',
+    name: 'Llamado de Nave Nodriza',
+    badge: 'Apoyo',
+    description: 'Despliega una nave insignia para reforzar la línea y absorber daño inicial.',
+    cost: 5,
+    cooldown: 32,
+    options: [
+      {
+        key: 'escort',
+        label: 'Escolta de drones',
+        description: 'Cantidad de drones ligeros que acompañan al despliegue.',
+        type: 'slider',
+        min: 2,
+        max: 8,
+        step: 1,
+        defaultValue: 4
+      },
+      {
+        key: 'shieldMode',
+        label: 'Modo de escudo',
+        description: 'Prioriza burbuja defensiva o reflector de daño.',
+        type: 'select',
+        choices: [
+          { value: 'bulwark', label: 'Bastión', hint: 'Absorbe daño frontal adicional.' },
+          { value: 'prism', label: 'Prisma', hint: 'Devuelve un porcentaje del daño recibido.' }
+        ],
+        defaultValue: 'bulwark'
+      },
+      {
+        key: 'autoRepair',
+        label: 'Auto-reparación',
+        description: 'Activa nanobots de curación lenta en la nave insignia.',
+        type: 'toggle',
+        defaultValue: false
+      }
+    ]
+  }
+];
+
+export const createDefaultAbilityConfig = (ability: SpecialAbilityBlueprint) => ability.options.reduce((config, option) => {
+  let defaultValue = option.defaultValue;
+
+  if (defaultValue === undefined) {
+    if (option.type === 'select' && option.choices?.length) defaultValue = option.choices[0].value;
+    if (option.type === 'slider' && option.min !== undefined) defaultValue = option.min;
+    if (option.type === 'toggle') defaultValue = false;
+  }
+
+  return { ...config, [option.key]: defaultValue ?? '' };
+}, {} as Record<string, string | number | boolean>);
+
+export const findAbilityById = (id: string) => SPECIAL_ABILITIES.find(a => a.id === id);
