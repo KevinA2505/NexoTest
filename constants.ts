@@ -207,20 +207,21 @@ export const CARD_LIBRARY: Card[] = [
   }
 ];
 
+// TOP/BOTTOM lanes: inner towers now sit at x=220 (y offsets ±120) and outers at x=380 (y offsets ±180) to open extra space near the bridges.
 export const INITIAL_TOWERS_PLAYER = [
   { type: TowerType.KING, x: 100, y: ARENA_HEIGHT / 2, hp: 2975, range: 330, damage: 130, lane: 'CENTER' },
-  { type: TowerType.INNER, x: 260, y: ARENA_HEIGHT / 2 - 120, hp: 1530, range: 270, damage: 95, lane: 'TOP' },
-  { type: TowerType.INNER, x: 260, y: ARENA_HEIGHT / 2 + 120, hp: 1530, range: 270, damage: 95, lane: 'BOTTOM' },
-  { type: TowerType.OUTER, x: 460, y: ARENA_HEIGHT / 2 - 180, hp: 2040, range: 270, damage: 90, lane: 'TOP' },
-  { type: TowerType.OUTER, x: 460, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
+  { type: TowerType.INNER, x: 220, y: ARENA_HEIGHT / 2 - 120, hp: 1530, range: 270, damage: 95, lane: 'TOP' },
+  { type: TowerType.INNER, x: 220, y: ARENA_HEIGHT / 2 + 120, hp: 1530, range: 270, damage: 95, lane: 'BOTTOM' },
+  { type: TowerType.OUTER, x: 380, y: ARENA_HEIGHT / 2 - 180, hp: 2040, range: 270, damage: 90, lane: 'TOP' },
+  { type: TowerType.OUTER, x: 380, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
 ];
 
 export const INITIAL_TOWERS_AI = [
   { type: TowerType.KING, x: ARENA_WIDTH - 100, y: ARENA_HEIGHT / 2, hp: 2975, range: 330, damage: 130, lane: 'CENTER' },
-  { type: TowerType.INNER, x: ARENA_WIDTH - 260, y: ARENA_HEIGHT / 2 - 120, hp: 1530, range: 270, damage: 95, lane: 'TOP' },
-  { type: TowerType.INNER, x: ARENA_WIDTH - 260, y: ARENA_HEIGHT / 2 + 120, hp: 1530, range: 270, damage: 95, lane: 'BOTTOM' },
-  { type: TowerType.OUTER, x: ARENA_WIDTH - 460, y: ARENA_HEIGHT / 2 - 180, hp: 2040, range: 270, damage: 90, lane: 'TOP' },
-  { type: TowerType.OUTER, x: ARENA_WIDTH - 460, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
+  { type: TowerType.INNER, x: ARENA_WIDTH - 220, y: ARENA_HEIGHT / 2 - 120, hp: 1530, range: 270, damage: 95, lane: 'TOP' },
+  { type: TowerType.INNER, x: ARENA_WIDTH - 220, y: ARENA_HEIGHT / 2 + 120, hp: 1530, range: 270, damage: 95, lane: 'BOTTOM' },
+  { type: TowerType.OUTER, x: ARENA_WIDTH - 380, y: ARENA_HEIGHT / 2 - 180, hp: 2040, range: 270, damage: 90, lane: 'TOP' },
+  { type: TowerType.OUTER, x: ARENA_WIDTH - 380, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
 ];
 
 export const OUTER_TOWER_HP = INITIAL_TOWERS_PLAYER.find(t => t.type === TowerType.OUTER)?.hp || 0;
