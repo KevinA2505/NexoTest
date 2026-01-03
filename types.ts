@@ -163,6 +163,8 @@ export interface GameState {
   previousStatus: 'START' | 'PLAYING' | 'VICTORY' | 'DEFEAT' | 'CODEX' | 'DECK_EDITOR';
   difficulty: number;
   commanderAbilityCooldown: number; // Enfriamiento de la habilidad especial
+  aiCommanderAbilityCooldown: number;
+  aiSpecialAbility: SelectedSpecialAbility;
 }
 
 export type SpecialAbilityOptionType = 'toggle' | 'slider' | 'select';

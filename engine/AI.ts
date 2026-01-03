@@ -1,6 +1,6 @@
 
-import { GameState, Team, Card, UnitType, TargetPreference } from '../types';
-import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT } from '../constants';
+import { GameState, Team, Card, UnitType, TargetPreference, SelectedSpecialAbility } from '../types';
+import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById } from '../constants';
 
 interface PlayerPattern {
   topLaneDeployCount: number;
@@ -64,6 +64,50 @@ export class NexoAI {
     }
   }
 
+  private tryUseAbility(state: GameState, onAbility?: (ability: SelectedSpecialAbility) => void): boolean {
+    if (!onAbility || !state.aiSpecialAbility) return false;
+    if (state.aiCommanderAbilityCooldown > 0) return false;
+
+    const ability = findAbilityById(state.aiSpecialAbility.id);
+    if (!ability) return false;
+    if (state.aiEnergy < ability.cost) return false;
+
+    const playerUnits = state.units.filter(u => u.team === Team.PLAYER && !u.isDead);
+    const aiUnits = state.units.filter(u => u.team === Team.AI && !u.isDead);
+
+    if (ability.id === 'emp_overwatch') {
+      const playerOnAISide = playerUnits.filter(u => u.x > ARENA_WIDTH / 2);
+      const clusteredPush = playerOnAISide.filter(u => Math.abs(u.y - ARENA_HEIGHT / 2) < 220);
+      const heavyThreat = playerOnAISide.some(u => {
+        const card = CARD_LIBRARY.find(c => c.id === u.cardId);
+        return card && (card.hp > 1200 || card.count > 3);
+      });
+
+      if (playerOnAISide.length >= 3 || clusteredPush.length >= 2 || heavyThreat) {
+        onAbility(state.aiSpecialAbility);
+        return true;
+      }
+    }
+
+    if (ability.id === 'mothership_command') {
+      const hangarCardId = state.aiSpecialAbility.configuration.hangarUnit as string | undefined;
+      const hangarCard = CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
+      if (!hangarCard) return false;
+
+      const aiFrontline = aiUnits.filter(u => u.x > ARENA_WIDTH * 0.55);
+      const playerFrontline = playerUnits.filter(u => u.x > ARENA_WIDTH * 0.55);
+      const aiIsBehind = aiFrontline.length < playerFrontline.length;
+      const hasEnergyToCommit = state.aiEnergy >= ability.cost + Math.max(0, hangarCard.cost - 2);
+
+      if (hasEnergyToCommit && (aiUnits.length < playerUnits.length || aiIsBehind || state.aiEnergy > MAX_ENERGY * 0.8)) {
+        onAbility(state.aiSpecialAbility);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   /**
    * Evalúa la mejor carta para jugar basándose en la mano actual, amenazas y aprendizaje.
    */
@@ -121,7 +165,7 @@ export class NexoAI {
     return (best && best.score > 0) ? best : null;
   }
 
-  public update(state: GameState, onDeploy: (cardId: string, x: number, y: number) => void) {
+  public update(state: GameState, onDeploy: (cardId: string, x: number, y: number) => void, onAbility?: (ability: SelectedSpecialAbility) => void) {
     const now = state.time;
     
     // Configuración por dificultad
@@ -132,6 +176,11 @@ export class NexoAI {
     if (now - this.lastDecisionTime < difficultyAdjust) return;
 
     this.updateLearning(state);
+
+    if (this.tryUseAbility(state, onAbility)) {
+      this.lastDecisionTime = now;
+      return;
+    }
 
     // Simular error de IA o tiempo de reflexión
     if (Math.random() < mistakeChance) {

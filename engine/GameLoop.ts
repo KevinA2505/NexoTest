@@ -24,6 +24,10 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     newState.commanderAbilityCooldown = Math.max(0, newState.commanderAbilityCooldown - deltaTime);
   }
 
+  if (newState.aiCommanderAbilityCooldown > 0) {
+    newState.aiCommanderAbilityCooldown = Math.max(0, newState.aiCommanderAbilityCooldown - deltaTime);
+  }
+
   if (timeRemaining <= 0 && newState.status === 'PLAYING') {
     const pKing = newState.towers.find(t => t.team === Team.PLAYER && t.type === TowerType.KING);
     const aKing = newState.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);

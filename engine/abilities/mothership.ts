@@ -123,6 +123,7 @@ export const applyMothershipAbility = (state: GameState, casterTeam: Team, hanga
     effects: newEffects,
     playerEnergy: casterTeam === Team.PLAYER ? Math.max(0, state.playerEnergy - MOTHERSHIP_BALANCE.cost) : state.playerEnergy,
     aiEnergy: casterTeam === Team.AI ? Math.max(0, state.aiEnergy - MOTHERSHIP_BALANCE.cost) : state.aiEnergy,
-    commanderAbilityCooldown: getMothershipCooldownMs(hangarCard.cost)
+    commanderAbilityCooldown: casterTeam === Team.PLAYER ? getMothershipCooldownMs(hangarCard.cost) : state.commanderAbilityCooldown,
+    aiCommanderAbilityCooldown: casterTeam === Team.AI ? getMothershipCooldownMs(hangarCard.cost) : state.aiCommanderAbilityCooldown
   };
 };
