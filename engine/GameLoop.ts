@@ -1,6 +1,7 @@
 
 import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY } from '../constants';
+import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 
 const BRIDGE_X = ARENA_WIDTH / 2;
 const BRIDGE_TOP_Y = ARENA_HEIGHT / 2 - 190;
@@ -123,6 +124,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   });
 
   // Update Units
+  const spawnedPayloadUnits: GameUnit[] = [];
+
   newState.units = newState.units.filter(u => !u.isDead).map(unit => {
     const updatedUnit = { ...unit };
 
@@ -139,6 +142,18 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     if (updatedUnit.dotTimer > 0) {
       updatedUnit.dotTimer -= deltaTime;
       updatedUnit.hp -= 0.12 * (deltaTime / 16); 
+    }
+
+    if (updatedUnit.isMothership && updatedUnit.payloadCardId) {
+      const payloadCard = CARD_LIBRARY.find(c => c.id === updatedUnit.payloadCardId && c.type !== UnitType.SPELL);
+      const payloadInterval = getMothershipPayloadIntervalMs(payloadCard?.cost);
+      updatedUnit.payloadSpawnTimer = (updatedUnit.payloadSpawnTimer ?? payloadInterval) - deltaTime;
+
+      while (updatedUnit.payloadSpawnTimer !== undefined && updatedUnit.payloadSpawnTimer <= 0 && payloadCard) {
+        const payloadUnits = createUnitsFromCard(payloadCard.id, updatedUnit.team, updatedUnit.lane, updatedUnit.x + 18, updatedUnit.y);
+        spawnedPayloadUnits.push(...payloadUnits);
+        updatedUnit.payloadSpawnTimer += payloadInterval;
+      }
     }
     
     const target = findBestTarget(updatedUnit, newState);
@@ -208,6 +223,10 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     }
     return updatedUnit;
   });
+
+  if (spawnedPayloadUnits.length > 0) {
+    newState.units.push(...spawnedPayloadUnits);
+  }
 
   // Update Towers
   newState.towers = newState.towers.map(tower => {

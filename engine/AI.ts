@@ -71,6 +71,7 @@ export class NexoAI {
     const ability = findAbilityById(state.aiSpecialAbility.id);
     if (!ability) return false;
     if (state.aiEnergy < ability.cost) return false;
+    const aiHasMothership = state.units.some(u => u.team === Team.AI && u.isMothership && !u.isDead);
 
     const playerUnits = state.units.filter(u => u.team === Team.PLAYER && !u.isDead);
     const aiUnits = state.units.filter(u => u.team === Team.AI && !u.isDead);
@@ -90,6 +91,7 @@ export class NexoAI {
     }
 
     if (ability.id === 'mothership_command') {
+      if (aiHasMothership) return false;
       const hangarCardId = state.aiSpecialAbility.configuration.hangarUnit as string | undefined;
       const hangarCard = CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
       if (!hangarCard) return false;

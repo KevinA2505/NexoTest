@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CARD_LIBRARY, EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
-import { getMothershipCooldownMs } from '../engine/abilities/mothership';
+import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
 
 interface SpecialAbilityModalProps {
   initialSelection: SelectedSpecialAbility;
@@ -47,7 +47,8 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   const selectedEmpMode = getEmpModeConfig(currentConfig.mode as string);
   const selectedHangarCardId = currentConfig.hangarUnit as string;
   const selectedHangarCard = CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
-  const mothershipCooldownSeconds = Math.ceil(getMothershipCooldownMs(selectedHangarCard?.cost) / 1000);
+  const mothershipCooldownSeconds = Math.ceil(getMothershipCooldownMs() / 1000);
+  const mothershipPayloadSeconds = Math.ceil(getMothershipPayloadIntervalMs(selectedHangarCard?.cost) / 1000);
   const displayedCooldown = selectedAbility.id === 'mothership_command' ? mothershipCooldownSeconds : selectedAbility.cooldown;
 
   const renderOption = (optionKey: string) => {
@@ -156,7 +157,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
               const abilityHangarCardId = (configurations[ability.id]?.hangarUnit as string) || (hangarOption?.defaultValue as string);
               const abilityHangarCard = CARD_LIBRARY.find(c => c.id === abilityHangarCardId && c.type !== UnitType.SPELL);
               const cooldownLabel = ability.id === 'mothership_command'
-                ? `${Math.ceil(getMothershipCooldownMs(abilityHangarCard?.cost) / 1000)}s CD`
+                ? `${Math.ceil(getMothershipCooldownMs() / 1000)}s CD`
                 : `${ability.cooldown}s CD`;
               return (
                 <button
@@ -192,15 +193,15 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
               <h4 className="text-2xl font-black text-white">{selectedAbility.name}</h4>
               <p className="text-[11px] text-white/60 max-w-2xl">{selectedAbility.description}</p>
             </div>
-            <div className="text-right">
-              <div className="text-[10px] text-white/50 uppercase">Coste</div>
-              <div className="text-[#00ccff] text-xl font-black">{selectedAbility.cost}⚡</div>
-              <div className="text-[10px] text-white/50 uppercase">Enfriamiento {displayedCooldown}s</div>
+              <div className="text-right">
+                <div className="text-[10px] text-white/50 uppercase">Coste</div>
+                <div className="text-[#00ccff] text-xl font-black">{selectedAbility.cost}⚡</div>
+                <div className="text-[10px] text-white/50 uppercase">Enfriamiento {displayedCooldown}s</div>
               {selectedAbility.id === 'mothership_command' && (
-                <div className="text-[9px] text-[#00ccff] font-semibold">Base 7s + coste: {displayedCooldown}s</div>
+                <div className="text-[9px] text-[#00ccff] font-semibold">CD fijo 30s · Genera carga cada {mothershipPayloadSeconds}s</div>
               )}
+              </div>
             </div>
-          </div>
 
           <div className="grid grid-cols-1 gap-3">
             {selectedAbility.options.map(option => renderOption(option.key))}
@@ -246,8 +247,8 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                 </p>
                 <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
                   <span className="px-2 py-1 border border-white/10 rounded">Coste habilidad {MOTHERSHIP_BALANCE.cost}⚡</span>
-                  <span className="px-2 py-1 border border-white/10 rounded">CD base 7s + coste de carta</span>
-                  <span className="px-2 py-1 border border-white/10 rounded">CD resultante {mothershipCooldownSeconds}s</span>
+                  <span className="px-2 py-1 border border-white/10 rounded">CD fijo {mothershipCooldownSeconds}s</span>
+                  <span className="px-2 py-1 border border-white/10 rounded">Genera carga cada {mothershipPayloadSeconds}s</span>
                 </div>
               </div>
             </div>

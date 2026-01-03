@@ -3,7 +3,7 @@ import React from 'react';
 import { CARD_LIBRARY, EMP_ABILITY_BALANCE, SPECIAL_ABILITIES, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
-import { getMothershipCooldownMs } from '../engine/abilities/mothership';
+import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
 
 interface DeckEditorProps {
   selection: string[];
@@ -36,7 +36,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
   const hangarCardId = selectedAbility.configuration.hangarUnit as string;
   const hangarCard = CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
   const displayedAbilityCooldown = ability.id === 'mothership_command'
-    ? Math.ceil(getMothershipCooldownMs(hangarCard?.cost) / 1000)
+    ? Math.ceil(getMothershipCooldownMs() / 1000)
     : ability.cooldown;
   const renderAbilityConfigValue = (key: string, value: string | number | boolean) => {
     if (ability.id === 'emp_overwatch' && key === 'mode') {
@@ -46,8 +46,9 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
     if (ability.id === 'mothership_command' && key === 'hangarUnit') {
       const card = CARD_LIBRARY.find(c => c.id === value);
       if (!card) return 'Pendiente';
-      const cooldown = Math.ceil(getMothershipCooldownMs(card.cost) / 1000);
-      return `${card.name} · ${card.cost}⚡ · CD ${cooldown}s`;
+      const cooldown = Math.ceil(getMothershipCooldownMs() / 1000);
+      const payloadInterval = Math.ceil(getMothershipPayloadIntervalMs(card.cost) / 1000);
+      return `${card.name} · ${card.cost}⚡ · CD ${cooldown}s · Gén. ${payloadInterval}s`;
     }
     return String(value);
   };
@@ -87,7 +88,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
             <div className="flex items-center gap-3 text-[10px] text-white/60 uppercase">
               <span className="flex items-center gap-1"><span className="text-[#00ccff] font-black">{ability.cost}⚡</span> activación</span>
               <span className="flex items-center gap-1">
-                <span className="text-[#00ccff] font-black">{displayedAbilityCooldown}s</span> enfriamiento{ability.id === 'mothership_command' ? ' dinámico' : ''}
+                <span className="text-[#00ccff] font-black">{displayedAbilityCooldown}s</span> enfriamiento
               </span>
             </div>
             <div className="flex flex-wrap gap-1 text-[9px] text-white/50">
