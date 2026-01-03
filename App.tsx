@@ -1,16 +1,25 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect } from './types';
-import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION } from './constants';
+import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility } from './types';
+import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
+import SpecialAbilityModal from './components/SpecialAbilityModal';
 
 const aiController = new NexoAI();
 
 const App: React.FC = () => {
+  const [specialAbility, setSpecialAbility] = useState<SelectedSpecialAbility>(() => {
+    const defaultAbility = SPECIAL_ABILITIES[0];
+    return {
+      id: defaultAbility.id,
+      configuration: createDefaultAbilityConfig(defaultAbility)
+    };
+  });
+  const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
   const [gameState, setGameState] = useState<GameState>(() => {
     const initialSelection = ['infantry', 'marines', 'guardian', 'fighter', 'tank', 'iron_star_tank', 'nova_squad', 'orbital_laser', 'healing_matrix'];
     return {
@@ -355,6 +364,7 @@ const App: React.FC = () => {
   const timeRemaining = Math.max(0, GAME_DURATION - Math.floor(gameState.time / 1000));
   const isOvertime = timeRemaining <= 60 && timeRemaining > 0;
   const abilityReady = gameState.playerEnergy >= 3 && gameState.commanderAbilityCooldown <= 0;
+  const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
 
   return (
     <div className="min-h-screen flex bg-[#010101] overflow-hidden select-none font-mono text-white">
@@ -439,6 +449,9 @@ const App: React.FC = () => {
             <div className="flex gap-2">
               <button onClick={() => setStatus('CODEX')} className="text-[9px] border border-[#00ccff]/30 px-3 py-1 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black transition uppercase tracking-widest">Codex</button>
               <button onClick={() => setStatus('DECK_EDITOR')} className="text-[9px] border border-[#00ccff]/30 px-3 py-1 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black transition uppercase tracking-widest">Mazo</button>
+              <button onClick={() => setIsAbilityModalOpen(true)} className="text-[9px] border border-[#00ccff]/30 px-3 py-1 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black transition uppercase tracking-widest">
+                Habilidad
+              </button>
             </div>
           </div>
 
@@ -458,6 +471,15 @@ const App: React.FC = () => {
              <div className="flex flex-col items-end">
                 <span className="text-[8px] text-[#00ccff] opacity-50 uppercase tracking-widest">User Link</span>
                 <div className="text-[#00ccff] drop-shadow-[0_0_5px_#00ccff] font-bold">{Math.floor(gameState.playerEnergy)}⚡</div>
+             </div>
+             <div className="flex flex-col items-end">
+                <span className="text-[8px] text-[#00ccff] opacity-50 uppercase tracking-widest">Habilidad</span>
+                <div className="text-[9px] text-white flex items-center gap-2">
+                  <span className="px-2 py-0.5 border border-[#00ccff]/40 text-[#00ccff] uppercase tracking-widest text-[8px] rounded">
+                    {activeAbility.badge || 'Core'}
+                  </span>
+                  <span className="font-bold">{activeAbility.name}</span>
+                </div>
              </div>
           </div>
         </div>
@@ -503,6 +525,8 @@ const App: React.FC = () => {
           selection={gameState.playerSelection} 
           onUpdate={(newSel) => setGameState(p => ({ ...p, playerSelection: newSel }))}
           onClose={closeOverlay}
+          onOpenAbilityModal={() => setIsAbilityModalOpen(true)}
+          selectedAbility={specialAbility}
         />
       )}
 
@@ -521,12 +545,24 @@ const App: React.FC = () => {
                   <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-300"></div>
                 </button>
              ))}
-             <div className="flex gap-2 mt-4">
-                <button onClick={() => setStatus('DECK_EDITOR')} className="flex-1 py-2 border border-[#00ccff]/30 text-[#00ccff]/70 text-[9px] uppercase tracking-widest hover:bg-[#00ccff] hover:text-black transition">Mazo</button>
-                <button onClick={() => setStatus('CODEX')} className="flex-1 py-2 border border-[#00ccff]/30 text-[#00ccff]/70 text-[9px] uppercase tracking-widest hover:bg-[#00ccff] hover:text-black transition">Codex</button>
+            <div className="flex gap-2 mt-4">
+               <button onClick={() => setStatus('DECK_EDITOR')} className="flex-1 py-2 border border-[#00ccff]/30 text-[#00ccff]/70 text-[9px] uppercase tracking-widest hover:bg-[#00ccff] hover:text-black transition">Mazo</button>
+               <button onClick={() => setStatus('CODEX')} className="flex-1 py-2 border border-[#00ccff]/30 text-[#00ccff]/70 text-[9px] uppercase tracking-widest hover:bg-[#00ccff] hover:text-black transition">Codex</button>
+               <button onClick={() => setIsAbilityModalOpen(true)} className="flex-1 py-2 border border-[#00ccff]/30 text-[#00ccff]/70 text-[9px] uppercase tracking-widest hover:bg-[#00ccff] hover:text-black transition">Habilidad</button>
              </div>
           </div>
         </div>
+      )}
+
+      {isAbilityModalOpen && (
+        <SpecialAbilityModal
+          initialSelection={specialAbility}
+          onClose={() => setIsAbilityModalOpen(false)}
+          onConfirm={(selection) => {
+            setSpecialAbility(selection);
+            setIsAbilityModalOpen(false);
+          }}
+        />
       )}
     </div>
   );
