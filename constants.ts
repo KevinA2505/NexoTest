@@ -7,6 +7,29 @@ export const MAX_ENERGY = 10;
 export const BASE_ENERGY_GAIN_RATE = 0.015;
 export const GAME_DURATION = 180; // 3 minutos en segundos
 
+export const EMP_ABILITY_BALANCE = {
+  cost: 3,
+  radius: 260,
+  cooldownMs: 24000,
+  defaultMode: 'lockdown',
+  modes: {
+    lockdown: {
+      key: 'lockdown',
+      label: 'Modo 1 · Apagón total',
+      description: 'Aturde al máximo sin aplicar daño.',
+      stunDuration: 3600,
+      damage: 0
+    },
+    disruptor: {
+      key: 'disruptor',
+      label: 'Modo 2 · Disrupción',
+      description: 'Aturde menos tiempo pero inflige daño ligero.',
+      stunDuration: 1800,
+      damage: 70
+    }
+  }
+} as const;
+
 export const CARD_LIBRARY: Card[] = [
   { 
     id: 'infantry', name: 'Infantería Orbital', cost: 2, type: UnitType.GROUND, 
@@ -188,36 +211,27 @@ export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
     name: 'Pulso EMP de Saturación',
     badge: 'Control',
     description: 'Desactiva unidades robóticas y ralentiza sistemas durante una ventana crítica.',
-    cost: 3,
-    cooldown: 24,
+    cost: EMP_ABILITY_BALANCE.cost,
+    cooldown: Math.floor(EMP_ABILITY_BALANCE.cooldownMs / 1000),
     options: [
       {
-        key: 'radius',
-        label: 'Radio de descarga',
-        description: 'Ajusta el alcance del pulso antes de que se disipe.',
-        type: 'slider',
-        min: 140,
-        max: 320,
-        step: 20,
-        defaultValue: 200
-      },
-      {
-        key: 'dampening',
-        label: 'Amortiguación de energía',
-        description: 'Aplica una breve reducción de daño en lugar de daño plano.',
-        type: 'toggle',
-        defaultValue: true
-      },
-      {
-        key: 'detonation',
-        label: 'Secuencia de detonación',
-        description: 'Escoge la prioridad del pulso.',
+        key: 'mode',
+        label: 'Modo del pulso',
+        description: 'Alterna entre aturdimiento completo o disrupción con daño.',
         type: 'select',
         choices: [
-          { value: 'focused', label: 'Enfoque a núcleos', hint: 'Mayor aturdimiento en unidades élite.' },
-          { value: 'wide', label: 'Dispersión', hint: 'Cobertura más amplia, menos intensidad.' }
+          { 
+            value: EMP_ABILITY_BALANCE.modes.lockdown.key, 
+            label: EMP_ABILITY_BALANCE.modes.lockdown.label, 
+            hint: `${EMP_ABILITY_BALANCE.modes.lockdown.stunDuration / 1000}s de aturdimiento, sin daño`
+          },
+          { 
+            value: EMP_ABILITY_BALANCE.modes.disruptor.key, 
+            label: EMP_ABILITY_BALANCE.modes.disruptor.label, 
+            hint: `${EMP_ABILITY_BALANCE.modes.disruptor.stunDuration / 1000}s + ${EMP_ABILITY_BALANCE.modes.disruptor.damage} daño`
+          }
         ],
-        defaultValue: 'focused'
+        defaultValue: EMP_ABILITY_BALANCE.defaultMode
       }
     ]
   },

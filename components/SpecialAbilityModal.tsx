@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
+import { EMP_ABILITY_BALANCE, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
 import { SelectedSpecialAbility } from '../types';
+import { getEmpModeConfig } from '../engine/abilities/emp';
 
 interface SpecialAbilityModalProps {
   initialSelection: SelectedSpecialAbility;
@@ -42,6 +43,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   };
 
   const currentConfig = configurations[selectedAbility.id] || createDefaultAbilityConfig(selectedAbility);
+  const selectedEmpMode = getEmpModeConfig(currentConfig.mode as string);
 
   const renderOption = (optionKey: string) => {
     const option = selectedAbility.options.find(o => o.key === optionKey);
@@ -189,6 +191,27 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
           <div className="grid grid-cols-1 gap-3">
             {selectedAbility.options.map(option => renderOption(option.key))}
           </div>
+
+          {selectedAbility.id === 'emp_overwatch' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+              <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
+                <div className="text-[10px] uppercase text-white/50">Coste</div>
+                <div className="text-xl font-black text-[#00ccff]">{selectedAbility.cost}⚡</div>
+                <div className="text-[10px] uppercase text-white/50">Enfriamiento</div>
+                <div className="text-sm font-bold text-white">{selectedAbility.cooldown}s</div>
+              </div>
+              <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2">
+                <div className="text-[10px] uppercase text-white/50">Vista previa</div>
+                <div className="text-lg font-black text-white">{selectedEmpMode.label}</div>
+                <p className="text-[10px] text-white/60 uppercase tracking-wider">{selectedEmpMode.description}</p>
+                <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                  <span className="px-2 py-1 border border-white/10 rounded">Radio {EMP_ABILITY_BALANCE.radius}</span>
+                  <span className="px-2 py-1 border border-white/10 rounded">Aturdimiento {selectedEmpMode.stunDuration / 1000}s</span>
+                  <span className="px-2 py-1 border border-white/10 rounded">Daño {selectedEmpMode.damage}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
             <button
