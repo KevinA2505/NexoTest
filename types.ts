@@ -196,3 +196,15 @@ export interface SelectedSpecialAbility {
   id: string;
   configuration: Record<string, string | number | boolean>;
 }
+
+export type TrackType = 'climax_3min' | 'meditation_5min';
+
+export type Instrument = 'pad' | 'piano' | 'drums' | 'voidDrone';
+
+export interface NoteEvent {
+  instrument: Instrument;
+  pitch: number;
+  start: number;
+  duration: number;
+  velocity: number;
+}
