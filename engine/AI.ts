@@ -1,6 +1,6 @@
 
-import { GameState, Team, Card, UnitType, TargetPreference, SelectedSpecialAbility } from '../types';
-import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById } from '../constants';
+import { GameState, Team, Card, UnitType, TargetPreference, SelectedSpecialAbility, TowerType } from '../types';
+import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById, GAME_DURATION } from '../constants';
 
 interface PlayerPattern {
   topLaneDeployCount: number;
@@ -171,9 +171,20 @@ export class NexoAI {
     const now = state.time;
     
     // Configuración por dificultad
-    const difficultyAdjust = [3500, 2000, 900][state.difficulty];
-    const energyReserve = [3, 1, 0][state.difficulty]; // Cuánta energía guarda la IA "por si acaso"
+    const baseDifficultyAdjust = [3500, 2000, 900][state.difficulty];
+    const baseEnergyReserve = [3, 1, 0][state.difficulty]; // Cuánta energía guarda la IA "por si acaso"
     const mistakeChance = [0.4, 0.15, 0.02][state.difficulty]; // Probabilidad de no tomar la decisión óptima
+
+    const elapsedSeconds = now / 1000;
+    const timeRemaining = Math.max(0, GAME_DURATION - elapsedSeconds);
+    const isOvertime = timeRemaining <= 60;
+
+    const aiKing = state.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);
+    const playerKing = state.towers.find(t => t.team === Team.PLAYER && t.type === TowerType.KING);
+    const isAiBehindOnKing = aiKing && playerKing ? aiKing.hp < playerKing.hp : false;
+
+    const difficultyAdjust = isOvertime || isAiBehindOnKing ? Math.max(600, baseDifficultyAdjust * 0.6) : baseDifficultyAdjust;
+    const energyReserve = isOvertime || isAiBehindOnKing ? Math.max(0, baseEnergyReserve - 1) : baseEnergyReserve;
 
     if (now - this.lastDecisionTime < difficultyAdjust) return;
 
@@ -201,16 +212,31 @@ export class NexoAI {
 
     // --- LÓGICA DE POSICIONAMIENTO ---
     const playerUnits = state.units.filter(u => u.team === Team.PLAYER && !u.isDead);
-    const aiTowers = state.towers.filter(t => t.team === Team.AI && !t.isDead);
+    const aiTowers = state.towers.filter(t => t.team === Team.AI);
     
     let deployX = ARENA_WIDTH - 200;
     let deployY = ARENA_HEIGHT / 2;
 
-    // Determinar carril según amenazas o aprendizaje
+    // Determinar carril según amenazas o aprendizaje, incluyendo estado de torres
     const topThreat = playerUnits.filter(u => u.lane === 'TOP').length;
     const botThreat = playerUnits.filter(u => u.lane === 'BOTTOM').length;
+
+    const computeTowerThreat = (lane: 'TOP' | 'BOTTOM') => {
+      const laneTowers = aiTowers.filter(t => t.lane === lane && (t.type === TowerType.OUTER || t.type === TowerType.INNER));
+      return laneTowers.reduce((score, tower) => {
+        const nearbyEnemies = playerUnits.filter(u => u.lane === lane && Math.hypot(u.x - tower.x, u.y - tower.y) < 320);
+        const nearbyCount = nearbyEnemies.length;
+        if (tower.isDead) return score + 40 + nearbyCount * 10;
+        if (tower.hp < tower.maxHp * 0.5) return score + 30 + nearbyCount * 8;
+        if (tower.hp < tower.maxHp * 0.85 && nearbyCount > 0) return score + 15 + nearbyCount * 5;
+        return score + Math.min(nearbyCount * 4, 12);
+      }, 0);
+    };
+
+    const topLaneScore = topThreat * 10 + computeTowerThreat('TOP');
+    const bottomLaneScore = botThreat * 10 + computeTowerThreat('BOTTOM');
     
-    if (topThreat > botThreat || (topThreat === botThreat && this.playerPattern.topLaneDeployCount > this.playerPattern.bottomLaneDeployCount)) {
+    if (topLaneScore > bottomLaneScore || (topLaneScore === bottomLaneScore && this.playerPattern.topLaneDeployCount > this.playerPattern.bottomLaneDeployCount)) {
       deployY = ARENA_HEIGHT / 2 - 180 + (Math.random() * 60 - 30);
     } else {
       deployY = ARENA_HEIGHT / 2 + 180 + (Math.random() * 60 - 30);
@@ -218,9 +244,34 @@ export class NexoAI {
 
     // Hechizos: Siempre sobre el enemigo
     if (card.type === UnitType.SPELL && playerUnits.length > 0) {
-      const target = playerUnits.sort((a, b) => b.x - a.x)[0]; // El más avanzado
-      deployX = target.x;
-      deployY = target.y;
+      const aoeRadius = card.aoeRadius || 150;
+
+      let bestClusterCenter: { x: number; y: number } | null = null;
+      let bestClusterScore = 0;
+      let bestClusterCount = 0;
+
+      playerUnits.forEach(candidate => {
+        const cluster = playerUnits.filter(u => Math.hypot(u.x - candidate.x, u.y - candidate.y) <= aoeRadius * 1.05);
+        const totalHp = cluster.reduce((acc, u) => acc + u.hp, 0);
+        const score = totalHp + cluster.length * 50;
+
+        if (score > bestClusterScore || (score === bestClusterScore && cluster.length > bestClusterCount)) {
+          bestClusterScore = score;
+          bestClusterCount = cluster.length;
+          const centerX = cluster.reduce((acc, u) => acc + u.x, 0) / cluster.length;
+          const centerY = cluster.reduce((acc, u) => acc + u.y, 0) / cluster.length;
+          bestClusterCenter = { x: centerX, y: centerY };
+        }
+      });
+
+      if (bestClusterCenter && bestClusterCount > 1) {
+        deployX = bestClusterCenter.x;
+        deployY = bestClusterCenter.y;
+      } else {
+        const target = playerUnits.sort((a, b) => b.x - a.x)[0]; // Fallback: el más avanzado
+        deployX = target.x;
+        deployY = target.y;
+      }
     } 
     // Defensa: Cerca de las torres si hay amenazas
     else if (playerUnits.some(u => u.x > ARENA_WIDTH / 2 + 100)) {
