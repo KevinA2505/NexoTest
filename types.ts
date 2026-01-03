@@ -78,6 +78,7 @@ export interface GameUnit {
   collisionRadius?: number;
   isMothership?: boolean;
   payloadCardId?: string;
+  payloadSpawnTimer?: number;
 }
 
 export interface Tower {

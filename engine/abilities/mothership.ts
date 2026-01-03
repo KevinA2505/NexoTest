@@ -4,7 +4,7 @@ import { GameState, GameUnit, TargetPreference, Team, UnitType } from '../../typ
 const SPAWN_OFFSET_X = 140;
 const SPAWN_OFFSET_Y = 150;
 
-const createUnitsFromCard = (cardId: string, team: Team, lane: 'TOP' | 'BOTTOM', originX: number, originY: number) => {
+export const createUnitsFromCard = (cardId: string, team: Team, lane: 'TOP' | 'BOTTOM', originX: number, originY: number) => {
   const card = CARD_LIBRARY.find(c => c.id === cardId);
   if (!card || card.type === UnitType.SPELL) return [] as GameUnit[];
 
@@ -58,17 +58,26 @@ const pickLaneForReinforcement = (state: GameState, team: Team) => {
   return topScore >= bottomScore ? 'TOP' : 'BOTTOM';
 };
 
-export const getMothershipCooldownMs = (cardCost?: number) => {
-  return MOTHERSHIP_BALANCE.baseCooldownMs + (cardCost || 0) * MOTHERSHIP_BALANCE.cooldownPerCostMs;
+export const getMothershipCooldownMs = () => {
+  return MOTHERSHIP_BALANCE.baseCooldownMs;
+};
+
+export const getMothershipPayloadIntervalMs = (cardCost?: number) => {
+  return MOTHERSHIP_BALANCE.payloadBaseIntervalMs + (cardCost || 0) * MOTHERSHIP_BALANCE.payloadIntervalPerCostMs;
 };
 
 export const applyMothershipAbility = (state: GameState, casterTeam: Team, hangarCardId?: string): GameState => {
   const hangarCard = CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
   if (!hangarCard) return state;
 
+  const hasActiveMothership = state.units.some(u => u.isMothership && u.team === casterTeam && !u.isDead);
+  if (hasActiveMothership) return state;
+
   const lane = pickLaneForReinforcement(state, casterTeam);
   const spawnX = casterTeam === Team.PLAYER ? SPAWN_OFFSET_X : ARENA_WIDTH - SPAWN_OFFSET_X;
   const spawnY = ARENA_HEIGHT / 2 + (lane === 'TOP' ? -SPAWN_OFFSET_Y : SPAWN_OFFSET_Y);
+
+  const payloadInterval = getMothershipPayloadIntervalMs(hangarCard.cost);
 
   const mothership: GameUnit = {
     id: 'ms-' + Math.random(),
@@ -94,11 +103,12 @@ export const applyMothershipAbility = (state: GameState, casterTeam: Team, hanga
     aoeRadius: undefined,
     stunTimer: 0,
     dotTimer: 0,
-    projectileType: 'plasma',
+    projectileType: 'none',
     isOverclocked: false,
     collisionRadius: MOTHERSHIP_BALANCE.collisionRadius,
     isMothership: true,
-    payloadCardId: hangarCard.id
+    payloadCardId: hangarCard.id,
+    payloadSpawnTimer: payloadInterval
   };
 
   const escorts = createUnitsFromCard(hangarCard.id, casterTeam, lane, spawnX + 18, spawnY);
@@ -123,7 +133,7 @@ export const applyMothershipAbility = (state: GameState, casterTeam: Team, hanga
     effects: newEffects,
     playerEnergy: casterTeam === Team.PLAYER ? Math.max(0, state.playerEnergy - MOTHERSHIP_BALANCE.cost) : state.playerEnergy,
     aiEnergy: casterTeam === Team.AI ? Math.max(0, state.aiEnergy - MOTHERSHIP_BALANCE.cost) : state.aiEnergy,
-    commanderAbilityCooldown: casterTeam === Team.PLAYER ? getMothershipCooldownMs(hangarCard.cost) : state.commanderAbilityCooldown,
-    aiCommanderAbilityCooldown: casterTeam === Team.AI ? getMothershipCooldownMs(hangarCard.cost) : state.aiCommanderAbilityCooldown
+    commanderAbilityCooldown: casterTeam === Team.PLAYER ? getMothershipCooldownMs() : state.commanderAbilityCooldown,
+    aiCommanderAbilityCooldown: casterTeam === Team.AI ? getMothershipCooldownMs() : state.aiCommanderAbilityCooldown
   };
 };

@@ -12,11 +12,12 @@ export const MOTHERSHIP_BALANCE = {
   hpRatioFromOuter: 0.625,
   speed: 0.55,
   collisionRadius: 30,
-  damage: 40,
-  range: 210,
+  damage: 0,
+  range: 0,
   attackSpeed: 5000,
-  baseCooldownMs: 7000,
-  cooldownPerCostMs: 1000,
+  baseCooldownMs: 30000,
+  payloadBaseIntervalMs: 7000,
+  payloadIntervalPerCostMs: 1000,
   color: '#9ae6ff' as const
 };
 

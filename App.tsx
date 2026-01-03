@@ -5,7 +5,7 @@ import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARE
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
-import { applyMothershipAbility, getMothershipCooldownMs } from './engine/abilities/mothership';
+import { applyMothershipAbility, getMothershipCooldownMs, getMothershipPayloadIntervalMs } from './engine/abilities/mothership';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
@@ -98,6 +98,8 @@ const App: React.FC = () => {
       }
 
       if (activeAbility.id === 'mothership_command') {
+        const hasActiveMothership = prev.units.some(u => u.team === Team.PLAYER && u.isMothership && !u.isDead);
+        if (hasActiveMothership) return prev;
         return applyMothershipAbility(prev, Team.PLAYER, selectedHangarCard);
       }
 
@@ -333,6 +335,7 @@ const App: React.FC = () => {
       const ability = findAbilityById(selection.id);
       if (!ability) return prev;
       if (prev.aiEnergy < ability.cost) return prev;
+      const aiHasMothership = prev.units.some(u => u.team === Team.AI && u.isMothership && !u.isDead);
 
       if (selection.id === 'emp_overwatch') {
         const selectedMode = (selection.configuration.mode as string) || EMP_ABILITY_BALANCE.defaultMode;
@@ -342,6 +345,7 @@ const App: React.FC = () => {
       if (selection.id === 'mothership_command') {
         const hangarCard = selection.configuration.hangarUnit as string | undefined;
         if (!hangarCard) return prev;
+        if (aiHasMothership) return prev;
         return applyMothershipAbility(prev, Team.AI, hangarCard);
       }
 
@@ -421,9 +425,13 @@ const App: React.FC = () => {
   const abilityCost = activeAbility.cost;
   const selectedHangarCardId = specialAbility.configuration.hangarUnit as string | undefined;
   const selectedHangarCard = CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
-  const abilityReady = gameState.playerEnergy >= abilityCost && gameState.commanderAbilityCooldown <= 0 && (activeAbility.id !== 'mothership_command' || !!selectedHangarCard);
+  const playerHasMothership = gameState.units.some(u => u.team === Team.PLAYER && u.isMothership && !u.isDead);
+  const abilityReady = gameState.playerEnergy >= abilityCost
+    && gameState.commanderAbilityCooldown <= 0
+    && (activeAbility.id !== 'mothership_command' || (!!selectedHangarCard && !playerHasMothership));
   const currentEmpMode = getEmpModeConfig(specialAbility.configuration.mode as string);
-  const currentMothershipCooldown = Math.ceil(getMothershipCooldownMs(selectedHangarCard?.cost) / 1000);
+  const currentMothershipCooldown = Math.ceil(getMothershipCooldownMs() / 1000);
+  const currentMothershipPayloadInterval = Math.ceil(getMothershipPayloadIntervalMs(selectedHangarCard?.cost) / 1000);
   const abilityEditingLocked = gameState.status === 'PLAYING';
 
   return (
@@ -500,7 +508,7 @@ const App: React.FC = () => {
                     )}
                     {activeAbility.id === 'mothership_command' && (
                       <span className="text-[8px] text-[#00ccff] mt-1 text-center leading-tight">
-                        {selectedHangarCard ? `${selectedHangarCard.name} · CD ${currentMothershipCooldown}s` : 'Configura la carta embarcada'}
+                        {selectedHangarCard ? `${selectedHangarCard.name} · CD ${currentMothershipCooldown}s · Gén. ${currentMothershipPayloadInterval}s` : 'Configura la carta embarcada'}
                       </span>
                     )}
                     {gameState.commanderAbilityCooldown > 0 && (
@@ -511,7 +519,7 @@ const App: React.FC = () => {
                   {activeAbility.id === 'emp_overwatch'
                     ? `${currentEmpMode.stunDuration / 1000}s + ${currentEmpMode.damage || '0'} daño en radio ${EMP_ABILITY_BALANCE.radius}`
                     : activeAbility.id === 'mothership_command'
-                      ? `Nave con ${selectedHangarCard ? selectedHangarCard.name : 'carga pendiente'} · ${currentMothershipCooldown}s de CD dinámico`
+                      ? `Nave con ${selectedHangarCard ? selectedHangarCard.name : 'carga pendiente'} · CD fijo ${currentMothershipCooldown}s · Genera carga cada ${currentMothershipPayloadInterval}s`
                       : 'Aturde enemigos globales'}
                 </p>
             </div>
