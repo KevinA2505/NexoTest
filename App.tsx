@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility } from './types';
-import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from './constants';
+import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
+import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
@@ -55,26 +56,20 @@ const App: React.FC = () => {
   const gameLoopRef = useRef<number>(undefined);
 
   const triggerCommanderAbility = () => {
-    if (gameState.playerEnergy >= 3 && gameState.commanderAbilityCooldown <= 0 && gameState.status === 'PLAYING') {
-      setGameState(prev => {
-        const newState = { ...prev };
-        newState.units.forEach(u => {
-          if (u.team === Team.AI) u.stunTimer = 1500;
-        });
-        
-        newState.effects.push({
-          id: 'global-pulse-' + Math.random(),
-          x: ARENA_WIDTH / 2, y: ARENA_HEIGHT / 2,
-          type: 'emp_wave', timer: 1000, maxTimer: 1000, color: '#00ccff', radius: 400
-        });
+    const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
+    const abilityCost = activeAbility.cost;
+    if (gameState.commanderAbilityCooldown > 0 || gameState.status !== 'PLAYING') return;
 
-        return {
-          ...newState,
-          playerEnergy: prev.playerEnergy - 3,
-          commanderAbilityCooldown: 25000 
-        };
-      });
-    }
+    setGameState(prev => {
+      if (prev.playerEnergy < abilityCost || prev.commanderAbilityCooldown > 0 || prev.status !== 'PLAYING') return prev;
+
+      if (activeAbility.id === 'emp_overwatch') {
+        const selectedMode = (specialAbility.configuration.mode as string) || EMP_ABILITY_BALANCE.defaultMode;
+        return applyEmpAbility(prev, Team.PLAYER, selectedMode);
+      }
+
+      return prev;
+    });
   };
 
   const spawnUnits = useCallback((cardId: string, team: Team, x: number, y: number) => {
@@ -363,8 +358,10 @@ const App: React.FC = () => {
 
   const timeRemaining = Math.max(0, GAME_DURATION - Math.floor(gameState.time / 1000));
   const isOvertime = timeRemaining <= 60 && timeRemaining > 0;
-  const abilityReady = gameState.playerEnergy >= 3 && gameState.commanderAbilityCooldown <= 0;
   const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
+  const abilityCost = activeAbility.cost;
+  const abilityReady = gameState.playerEnergy >= abilityCost && gameState.commanderAbilityCooldown <= 0;
+  const currentEmpMode = getEmpModeConfig(specialAbility.configuration.mode as string);
 
   return (
     <div className="min-h-screen flex bg-[#010101] overflow-hidden select-none font-mono text-white">
@@ -432,12 +429,21 @@ const App: React.FC = () => {
                   `}
                 >
                     <span className="text-[10px] font-black uppercase tracking-widest">TAC-PULSE</span>
-                    <span className="text-[8px] mt-1">Coste: 3⚡</span>
+                    <span className="text-[8px] mt-1">Coste: {abilityCost}⚡</span>
+                    {activeAbility.id === 'emp_overwatch' && (
+                      <span className="text-[8px] text-[#00ccff] mt-1 text-center leading-tight">
+                        {currentEmpMode.label}
+                      </span>
+                    )}
                     {gameState.commanderAbilityCooldown > 0 && (
                         <div className="text-[7px] mt-1 opacity-50">CD: {(gameState.commanderAbilityCooldown / 1000).toFixed(0)}s</div>
                     )}
                 </button>
-                <p className="text-[6px] text-white/30 uppercase mt-2 text-center">Aturde enemigos globales</p>
+                <p className="text-[6px] text-white/30 uppercase mt-2 text-center">
+                  {activeAbility.id === 'emp_overwatch'
+                    ? `${currentEmpMode.stunDuration / 1000}s + ${currentEmpMode.damage || '0'} daño en radio ${EMP_ABILITY_BALANCE.radius}`
+                    : 'Aturde enemigos globales'}
+                </p>
             </div>
         )}
       </div>

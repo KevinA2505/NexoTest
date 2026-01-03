@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
+import { CARD_LIBRARY, EMP_ABILITY_BALANCE, SPECIAL_ABILITIES, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
+import { getEmpModeConfig } from '../engine/abilities/emp';
 
 interface DeckEditorProps {
   selection: string[];
@@ -31,6 +32,13 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
   }, {} as Record<string, number>);
 
   const ability = findAbilityById(selectedAbility.id) || SPECIAL_ABILITIES[0];
+  const renderAbilityConfigValue = (key: string, value: string | number | boolean) => {
+    if (ability.id === 'emp_overwatch' && key === 'mode') {
+      const mode = getEmpModeConfig(String(value));
+      return `${mode.label} · ${mode.stunDuration / 1000}s + ${mode.damage} dmg · Radio ${EMP_ABILITY_BALANCE.radius}`;
+    }
+    return String(value);
+  };
 
   return (
     <div className="fixed inset-0 bg-black/98 z-[150] p-6 flex flex-col items-center animate-in fade-in duration-300">
@@ -71,7 +79,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
             <div className="flex flex-wrap gap-1 text-[9px] text-white/50">
               {Object.entries(selectedAbility.configuration).map(([key, value]) => (
                 <span key={key} className="px-2 py-1 bg-white/5 rounded border border-white/10 capitalize">
-                  {key}: <strong className="text-[#00ccff]">{String(value)}</strong>
+                  {key}: <strong className="text-[#00ccff]">{renderAbilityConfigValue(key, value)}</strong>
                 </span>
               ))}
             </div>
