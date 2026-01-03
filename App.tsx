@@ -10,6 +10,7 @@ import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
 import SpecialAbilityModal from './components/SpecialAbilityModal';
+import { BattleMusic } from './engine/BattleMusic';
 
 const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
   const ability = SPECIAL_ABILITIES[Math.floor(Math.random() * SPECIAL_ABILITIES.length)];
@@ -39,6 +40,7 @@ const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
 const aiController = new NexoAI();
 
 const App: React.FC = () => {
+  const musicRef = useRef<BattleMusic>(new BattleMusic());
   const [specialAbility, setSpecialAbility] = useState<SelectedSpecialAbility>(() => {
     const defaultAbility = SPECIAL_ABILITIES[0];
     return {
@@ -371,7 +373,16 @@ const App: React.FC = () => {
     return () => cancelAnimationFrame(gameLoopRef.current!);
   }, [gameState.status]);
 
+  useEffect(() => {
+    return () => {
+      musicRef.current.stop(true);
+    };
+  }, []);
+
   const startNewGame = (difficulty: number) => {
+    musicRef.current.stop(true);
+    musicRef.current.start('climax_3min', GAME_DURATION);
+
     aiController.reset();
     
     const playerDeckPool = [...gameState.playerSelection].sort(() => 0.5 - Math.random());
@@ -411,6 +422,12 @@ const App: React.FC = () => {
       status: newStatus
     }));
   };
+
+  useEffect(() => {
+    if (gameState.status !== 'PLAYING') {
+      musicRef.current.stop(true);
+    }
+  }, [gameState.status]);
 
   const closeOverlay = () => {
     setGameState(prev => ({
