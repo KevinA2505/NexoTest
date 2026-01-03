@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { EMP_ABILITY_BALANCE, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
-import { SelectedSpecialAbility } from '../types';
+import { CARD_LIBRARY, EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
+import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
+import { getMothershipCooldownMs } from '../engine/abilities/mothership';
 
 interface SpecialAbilityModalProps {
   initialSelection: SelectedSpecialAbility;
@@ -44,6 +45,10 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
 
   const currentConfig = configurations[selectedAbility.id] || createDefaultAbilityConfig(selectedAbility);
   const selectedEmpMode = getEmpModeConfig(currentConfig.mode as string);
+  const selectedHangarCardId = currentConfig.hangarUnit as string;
+  const selectedHangarCard = CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
+  const mothershipCooldownSeconds = Math.ceil(getMothershipCooldownMs(selectedHangarCard?.cost) / 1000);
+  const displayedCooldown = selectedAbility.id === 'mothership_command' ? mothershipCooldownSeconds : selectedAbility.cooldown;
 
   const renderOption = (optionKey: string) => {
     const option = selectedAbility.options.find(o => o.key === optionKey);
@@ -147,6 +152,12 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
           <div className="flex flex-col gap-3">
             {SPECIAL_ABILITIES.map(ability => {
               const active = ability.id === selectedAbility.id;
+              const hangarOption = ability.options.find(o => o.key === 'hangarUnit');
+              const abilityHangarCardId = (configurations[ability.id]?.hangarUnit as string) || (hangarOption?.defaultValue as string);
+              const abilityHangarCard = CARD_LIBRARY.find(c => c.id === abilityHangarCardId && c.type !== UnitType.SPELL);
+              const cooldownLabel = ability.id === 'mothership_command'
+                ? `${Math.ceil(getMothershipCooldownMs(abilityHangarCard?.cost) / 1000)}s CD`
+                : `${ability.cooldown}s CD`;
               return (
                 <button
                   key={ability.id}
@@ -166,7 +177,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                   <p className="text-[11px] text-white/60 leading-snug">{ability.description}</p>
                   <div className="text-[10px] text-white/50 uppercase flex gap-3 mt-1">
                     <span>{ability.cost}⚡ costo</span>
-                    <span>{ability.cooldown}s CD</span>
+                    <span>{cooldownLabel}</span>
                   </div>
                 </button>
               );
@@ -184,7 +195,10 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
             <div className="text-right">
               <div className="text-[10px] text-white/50 uppercase">Coste</div>
               <div className="text-[#00ccff] text-xl font-black">{selectedAbility.cost}⚡</div>
-              <div className="text-[10px] text-white/50 uppercase">Enfriamiento {selectedAbility.cooldown}s</div>
+              <div className="text-[10px] text-white/50 uppercase">Enfriamiento {displayedCooldown}s</div>
+              {selectedAbility.id === 'mothership_command' && (
+                <div className="text-[9px] text-[#00ccff] font-semibold">Base 7s + coste: {displayedCooldown}s</div>
+              )}
             </div>
           </div>
 
@@ -208,6 +222,32 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                   <span className="px-2 py-1 border border-white/10 rounded">Radio {EMP_ABILITY_BALANCE.radius}</span>
                   <span className="px-2 py-1 border border-white/10 rounded">Aturdimiento {selectedEmpMode.stunDuration / 1000}s</span>
                   <span className="px-2 py-1 border border-white/10 rounded">Daño {selectedEmpMode.damage}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {selectedAbility.id === 'mothership_command' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+              <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
+                <div className="text-[10px] uppercase text-white/50">Casco</div>
+                <div className="text-xl font-black text-[#00ccff]">{MOTHERSHIP_HP} HP</div>
+                <div className="text-[10px] uppercase text-white/50">Velocidad</div>
+                <div className="text-sm font-bold text-white">{MOTHERSHIP_BALANCE.speed.toFixed(2)} u/tick</div>
+                <div className="text-[10px] uppercase text-white/50">Colisión</div>
+                <div className="text-sm font-bold text-white">{MOTHERSHIP_BALANCE.collisionRadius}px radio</div>
+              </div>
+              <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2">
+                <div className="text-[10px] uppercase text-white/50">Carga de hangar</div>
+                <div className="text-lg font-black text-white">
+                  {selectedHangarCard ? selectedHangarCard.name : 'Selecciona una tropa'}
+                </div>
+                <p className="text-[10px] text-white/60 uppercase tracking-wider">
+                  {selectedHangarCard ? `Despliega ${selectedHangarCard.count || 1}x ${selectedHangarCard.name} junto a la nave.` : 'Solo admite tropas (sin hechizos).'}
+                </p>
+                <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                  <span className="px-2 py-1 border border-white/10 rounded">Coste habilidad {MOTHERSHIP_BALANCE.cost}⚡</span>
+                  <span className="px-2 py-1 border border-white/10 rounded">CD base 7s + coste de carta</span>
+                  <span className="px-2 py-1 border border-white/10 rounded">CD resultante {mothershipCooldownSeconds}s</span>
                 </div>
               </div>
             </div>

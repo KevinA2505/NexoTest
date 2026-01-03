@@ -5,6 +5,7 @@ import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARE
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
+import { applyMothershipAbility, getMothershipCooldownMs } from './engine/abilities/mothership';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
@@ -59,6 +60,7 @@ const App: React.FC = () => {
     const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
     const abilityCost = activeAbility.cost;
     if (gameState.commanderAbilityCooldown > 0 || gameState.status !== 'PLAYING') return;
+    const selectedHangarCard = specialAbility.configuration.hangarUnit as string | undefined;
 
     setGameState(prev => {
       if (prev.playerEnergy < abilityCost || prev.commanderAbilityCooldown > 0 || prev.status !== 'PLAYING') return prev;
@@ -66,6 +68,10 @@ const App: React.FC = () => {
       if (activeAbility.id === 'emp_overwatch') {
         const selectedMode = (specialAbility.configuration.mode as string) || EMP_ABILITY_BALANCE.defaultMode;
         return applyEmpAbility(prev, Team.PLAYER, selectedMode);
+      }
+
+      if (activeAbility.id === 'mothership_command') {
+        return applyMothershipAbility(prev, Team.PLAYER, selectedHangarCard);
       }
 
       return prev;
@@ -360,8 +366,12 @@ const App: React.FC = () => {
   const isOvertime = timeRemaining <= 60 && timeRemaining > 0;
   const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
   const abilityCost = activeAbility.cost;
-  const abilityReady = gameState.playerEnergy >= abilityCost && gameState.commanderAbilityCooldown <= 0;
+  const selectedHangarCardId = specialAbility.configuration.hangarUnit as string | undefined;
+  const selectedHangarCard = CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
+  const abilityReady = gameState.playerEnergy >= abilityCost && gameState.commanderAbilityCooldown <= 0 && (activeAbility.id !== 'mothership_command' || !!selectedHangarCard);
   const currentEmpMode = getEmpModeConfig(specialAbility.configuration.mode as string);
+  const currentMothershipCooldown = Math.ceil(getMothershipCooldownMs(selectedHangarCard?.cost) / 1000);
+  const abilityEditingLocked = gameState.status === 'PLAYING';
 
   return (
     <div className="min-h-screen flex bg-[#010101] overflow-hidden select-none font-mono text-white">
@@ -435,6 +445,11 @@ const App: React.FC = () => {
                         {currentEmpMode.label}
                       </span>
                     )}
+                    {activeAbility.id === 'mothership_command' && (
+                      <span className="text-[8px] text-[#00ccff] mt-1 text-center leading-tight">
+                        {selectedHangarCard ? `${selectedHangarCard.name} · CD ${currentMothershipCooldown}s` : 'Configura la carta embarcada'}
+                      </span>
+                    )}
                     {gameState.commanderAbilityCooldown > 0 && (
                         <div className="text-[7px] mt-1 opacity-50">CD: {(gameState.commanderAbilityCooldown / 1000).toFixed(0)}s</div>
                     )}
@@ -442,7 +457,9 @@ const App: React.FC = () => {
                 <p className="text-[6px] text-white/30 uppercase mt-2 text-center">
                   {activeAbility.id === 'emp_overwatch'
                     ? `${currentEmpMode.stunDuration / 1000}s + ${currentEmpMode.damage || '0'} daño en radio ${EMP_ABILITY_BALANCE.radius}`
-                    : 'Aturde enemigos globales'}
+                    : activeAbility.id === 'mothership_command'
+                      ? `Nave con ${selectedHangarCard ? selectedHangarCard.name : 'carga pendiente'} · ${currentMothershipCooldown}s de CD dinámico`
+                      : 'Aturde enemigos globales'}
                 </p>
             </div>
         )}
@@ -455,7 +472,15 @@ const App: React.FC = () => {
             <div className="flex gap-2">
               <button onClick={() => setStatus('CODEX')} className="text-[9px] border border-[#00ccff]/30 px-3 py-1 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black transition uppercase tracking-widest">Codex</button>
               <button onClick={() => setStatus('DECK_EDITOR')} className="text-[9px] border border-[#00ccff]/30 px-3 py-1 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black transition uppercase tracking-widest">Mazo</button>
-              <button onClick={() => setIsAbilityModalOpen(true)} className="text-[9px] border border-[#00ccff]/30 px-3 py-1 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black transition uppercase tracking-widest">
+              <button
+                disabled={abilityEditingLocked}
+                onClick={() => !abilityEditingLocked && setIsAbilityModalOpen(true)}
+                className={`text-[9px] border px-3 py-1 uppercase tracking-widest transition ${
+                  abilityEditingLocked
+                    ? 'border-white/10 text-white/20 cursor-not-allowed'
+                    : 'border-[#00ccff]/30 text-[#00ccff]/70 hover:bg-[#00ccff] hover:text-black'
+                }`}
+              >
                 Habilidad
               </button>
             </div>
