@@ -11,6 +11,31 @@ import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
 import SpecialAbilityModal from './components/SpecialAbilityModal';
 
+const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
+  const ability = SPECIAL_ABILITIES[Math.floor(Math.random() * SPECIAL_ABILITIES.length)];
+  const configuration = createDefaultAbilityConfig(ability);
+
+  ability.options.forEach(option => {
+    if (option.type === 'select' && option.choices?.length) {
+      const choice = option.choices[Math.floor(Math.random() * option.choices.length)];
+      configuration[option.key] = choice.value;
+    }
+
+    if (option.type === 'slider' && option.min !== undefined && option.max !== undefined) {
+      const step = option.step || 1;
+      const steps = Math.floor((option.max - option.min) / step);
+      const offset = Math.floor(Math.random() * (steps + 1));
+      configuration[option.key] = option.min + offset * step;
+    }
+
+    if (option.type === 'toggle') {
+      configuration[option.key] = Math.random() > 0.5;
+    }
+  });
+
+  return { id: ability.id, configuration };
+};
+
 const aiController = new NexoAI();
 
 const App: React.FC = () => {
@@ -42,7 +67,9 @@ const App: React.FC = () => {
       status: 'START',
       previousStatus: 'START',
       difficulty: 1,
-      commanderAbilityCooldown: 0
+      commanderAbilityCooldown: 0,
+      aiCommanderAbilityCooldown: 0,
+      aiSpecialAbility: rollRandomAbilitySelection()
     };
   });
 
@@ -298,6 +325,30 @@ const App: React.FC = () => {
     });
   };
 
+  const handleAIAbility = useCallback((selection: SelectedSpecialAbility) => {
+    setGameState(prev => {
+      if (prev.status !== 'PLAYING') return prev;
+      if (prev.aiCommanderAbilityCooldown > 0) return prev;
+
+      const ability = findAbilityById(selection.id);
+      if (!ability) return prev;
+      if (prev.aiEnergy < ability.cost) return prev;
+
+      if (selection.id === 'emp_overwatch') {
+        const selectedMode = (selection.configuration.mode as string) || EMP_ABILITY_BALANCE.defaultMode;
+        return applyEmpAbility(prev, Team.AI, selectedMode);
+      }
+
+      if (selection.id === 'mothership_command') {
+        const hangarCard = selection.configuration.hangarUnit as string | undefined;
+        if (!hangarCard) return prev;
+        return applyMothershipAbility(prev, Team.AI, hangarCard);
+      }
+
+      return prev;
+    });
+  }, []);
+
   useEffect(() => {
     if (gameState.status !== 'PLAYING') return;
     let lastTime = Date.now();
@@ -307,7 +358,7 @@ const App: React.FC = () => {
       lastTime = now;
       setGameState(prev => {
         const updated = updateGame(prev, dt);
-        aiController.update(updated, handleAIDeploy);
+        aiController.update(updated, handleAIDeploy, handleAIAbility);
         return updated;
       });
       gameLoopRef.current = requestAnimationFrame(frame);
@@ -340,6 +391,8 @@ const App: React.FC = () => {
       activeSpells: [],
       time: 0,
       commanderAbilityCooldown: 0,
+      aiCommanderAbilityCooldown: 0,
+      aiSpecialAbility: rollRandomAbilitySelection(),
       towers: [
         ...INITIAL_TOWERS_PLAYER.map(t => ({ ...t, id: 'p-' + Math.random(), team: Team.PLAYER, locked: false, isDead: false, maxHp: t.hp, lastAttack: 0, attackSpeed: 1100, shockwaveCooldown: 0 })),
         ...INITIAL_TOWERS_AI.map(t => ({ ...t, id: 'a-' + Math.random(), team: Team.AI, locked: false, isDead: false, maxHp: t.hp, lastAttack: 0, attackSpeed: 1100, shockwaveCooldown: 0 }))

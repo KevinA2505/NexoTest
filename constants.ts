@@ -9,12 +9,12 @@ export const GAME_DURATION = 180; // 3 minutos en segundos
 
 export const MOTHERSHIP_BALANCE = {
   cost: 8,
-  hpRatioFromOuter: 0.5,
-  speed: 0.65,
+  hpRatioFromOuter: 0.625,
+  speed: 0.55,
   collisionRadius: 30,
-  damage: 115,
+  damage: 40,
   range: 210,
-  attackSpeed: 1200,
+  attackSpeed: 5000,
   baseCooldownMs: 7000,
   cooldownPerCostMs: 1000,
   color: '#9ae6ff' as const

@@ -26,6 +26,14 @@ export const applyEmpAbility = (state: GameState, casterTeam: Team, mode?: strin
     };
   });
 
+  const nextPlayerEnergy = casterTeam === Team.PLAYER
+    ? Math.max(0, state.playerEnergy - EMP_ABILITY_BALANCE.cost)
+    : state.playerEnergy;
+
+  const nextAiEnergy = casterTeam === Team.AI
+    ? Math.max(0, state.aiEnergy - EMP_ABILITY_BALANCE.cost)
+    : state.aiEnergy;
+
   return {
     ...state,
     units: updatedUnits,
@@ -42,7 +50,9 @@ export const applyEmpAbility = (state: GameState, casterTeam: Team, mode?: strin
         radius: EMP_ABILITY_BALANCE.radius
       }
     ],
-    playerEnergy: Math.max(0, state.playerEnergy - EMP_ABILITY_BALANCE.cost),
-    commanderAbilityCooldown: EMP_ABILITY_BALANCE.cooldownMs
+    playerEnergy: nextPlayerEnergy,
+    aiEnergy: nextAiEnergy,
+    commanderAbilityCooldown: casterTeam === Team.PLAYER ? EMP_ABILITY_BALANCE.cooldownMs : state.commanderAbilityCooldown,
+    aiCommanderAbilityCooldown: casterTeam === Team.AI ? EMP_ABILITY_BALANCE.cooldownMs : state.aiCommanderAbilityCooldown
   };
 };
