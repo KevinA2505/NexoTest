@@ -1,5 +1,5 @@
 
-import { AlienSubtype, Card, Faction, TowerType, SpecialAbilityBlueprint, UnitType, TargetPreference } from './types';
+import { AlienSubtype, Card, Faction, TowerType, SpecialAbilityBlueprint, UnitType, TargetPreference, SpellShape, VisualFamily } from './types';
 
 export const ARENA_WIDTH = 1200;
 export const ARENA_HEIGHT = 675;
@@ -10,6 +10,27 @@ export const BRIDGE_X = ARENA_WIDTH / 2;
 export const BRIDGE_TOP_Y = ARENA_HEIGHT / 2 - 190;
 export const BRIDGE_BOTTOM_Y = ARENA_HEIGHT / 2 + 190;
 export const BRIDGE_GAP_HALF = 100;
+
+type CardSeed = Omit<Card, 'visualFamily' | 'spellShape'> & Partial<Pick<Card, 'visualFamily' | 'spellShape'>>;
+
+const VISUAL_FAMILY_BY_FACTION: Record<Faction, VisualFamily> = {
+  [Faction.HUMAN]: 'humano',
+  [Faction.ANDROID]: 'ciber',
+  [Faction.ALIEN]: 'organico'
+};
+
+const SPELL_SHAPES: Record<string, SpellShape> = {
+  orbital_laser: 'concentric',
+  healing_matrix: 'runes',
+  android_selective_empulse: 'concentric',
+  android_temporal_overclock: 'runes',
+  aracnid_spore_rain: 'concentric',
+  aracnid_pheromone_cloud: 'runes',
+  humanoid_psychic_silence: 'runes',
+  humanoid_fear_wave: 'concentric',
+  slimoid_viscous_wave: 'portal',
+  slimoid_corrosive_shroud: 'portal'
+};
 
 export const MOTHERSHIP_BALANCE = {
   cost: 8,
@@ -48,7 +69,7 @@ export const EMP_ABILITY_BALANCE = {
   }
 } as const;
 
-export const CARD_LIBRARY: Card[] = [
+const CARD_SEEDS: CardSeed[] = [
   {
     id: 'infantry',
     name: 'Guardia de Vanguardia',
@@ -1278,6 +1299,14 @@ export const CARD_LIBRARY: Card[] = [
     projectileType: 'beam'
   }
 ];
+
+export const CARD_LIBRARY: Card[] = CARD_SEEDS.map(card => ({
+  ...card,
+  visualFamily: card.visualFamily ?? VISUAL_FAMILY_BY_FACTION[card.faction],
+  spellShape: card.type === UnitType.SPELL
+    ? (card.spellShape ?? SPELL_SHAPES[card.id] ?? 'concentric')
+    : undefined
+}));
 
 export const CARD_DISTRIBUTION_SCHEMA = [
   {

@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
-import { Faction, GameState, ProjectileStyle, Team, TowerType, UnitType } from '../types';
+import { AlienSubtype, Faction, GameState, GameUnit, ProjectileStyle, Team, TowerType, UnitType } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BRIDGE_GAP_HALF, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_X } from '../constants';
 
 interface ArenaProps {
@@ -39,7 +39,7 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     }));
   }, []);
 
-  const drawUnit = (ctx: CanvasRenderingContext2D, unit: any) => {
+  const drawUnit = (ctx: CanvasRenderingContext2D, unit: GameUnit) => {
     const baseColor = unit.color;
     const teamColor = unit.team === Team.PLAYER ? '#00ccff' : '#ff3366';
     
@@ -79,48 +79,269 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
         ctx.restore();
     }
 
-    ctx.beginPath();
-    ctx.strokeStyle = baseColor;
-    ctx.fillStyle = '#0a0a0a';
+    const drawBaseShape = () => {
+      ctx.beginPath();
+      switch (unit.shape) {
+        case 'circle': ctx.arc(0, 0, size, 0, Math.PI * 2); break;
+        case 'square': ctx.rect(-size, -size, size * 2, size * 2); break;
+        case 'triangle':
+          ctx.moveTo(0, -size);
+          ctx.lineTo(-size, size);
+          ctx.lineTo(size, size);
+          ctx.closePath();
+          break;
+        case 'diamond':
+          ctx.moveTo(0, -size);
+          ctx.lineTo(size, 0);
+          ctx.lineTo(0, size);
+          ctx.lineTo(-size, 0);
+          ctx.closePath();
+          break;
+        case 'hexagon':
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI / 3) * i;
+            ctx.lineTo(size * Math.cos(angle), size * Math.sin(angle));
+          }
+          ctx.closePath();
+          break;
+        case 'cross':
+          ctx.rect(-1.5, -size, 3, size * 2);
+          ctx.rect(-size, -1.5, size * 2, 3);
+          break;
+        case 'star':
+          for (let i = 0; i < 5; i++) {
+            ctx.lineTo(Math.cos((18 + i * 72) / 180 * Math.PI) * size, -Math.sin((18 + i * 72) / 180 * Math.PI) * size);
+            ctx.lineTo(Math.cos((54 + i * 72) / 180 * Math.PI) * (size/2), -Math.sin((54 + i * 72) / 180 * Math.PI) * (size/2));
+          }
+          ctx.closePath();
+          break;
+      }
+    };
 
-    switch (unit.shape) {
-      case 'circle': ctx.arc(0, 0, size, 0, Math.PI * 2); break;
-      case 'square': ctx.rect(-size, -size, size * 2, size * 2); break;
-      case 'triangle':
-        ctx.moveTo(0, -size);
-        ctx.lineTo(-size, size);
-        ctx.lineTo(size, size);
-        ctx.closePath();
-        break;
-      case 'diamond':
-        ctx.moveTo(0, -size);
-        ctx.lineTo(size, 0);
-        ctx.lineTo(0, size);
-        ctx.lineTo(-size, 0);
-        ctx.closePath();
-        break;
-      case 'hexagon':
+    const drawHumanoidSilhouette = () => {
+      ctx.strokeStyle = baseColor;
+      ctx.fillStyle = '#0a0a0a';
+      drawBaseShape();
+      ctx.fill();
+      ctx.stroke();
+      ctx.save();
+      ctx.strokeStyle = `${baseColor}77`;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.75, Math.PI * 0.1, Math.PI * 1.8);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const drawAndroidSilhouette = () => {
+      ctx.strokeStyle = baseColor;
+      ctx.fillStyle = '#050505';
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 1.05);
+      ctx.lineTo(size * 0.95, -size * 0.35);
+      ctx.lineTo(size * 0.75, size * 0.15);
+      ctx.lineTo(size * 0.7, size * 0.9);
+      ctx.lineTo(0, size * 1.1);
+      ctx.lineTo(-size * 0.7, size * 0.9);
+      ctx.lineTo(-size * 0.75, size * 0.15);
+      ctx.lineTo(-size * 0.95, -size * 0.35);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.save();
+      ctx.strokeStyle = `${baseColor}88`;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 4]);
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.85, -size * 0.05);
+      ctx.lineTo(size * 0.85, size * 0.1);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.25, -size * 0.95);
+      ctx.lineTo(-size * 0.35, size * 0.65);
+      ctx.moveTo(size * 0.25, -size * 0.9);
+      ctx.lineTo(size * 0.35, size * 0.65);
+      ctx.stroke();
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = '#0ff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-size * 0.5, size * 0.25);
+      ctx.lineTo(-size * 0.1, size * 0.55);
+      ctx.lineTo(size * 0.45, size * 0.2);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const drawAracnidSilhouette = () => {
+      ctx.strokeStyle = baseColor;
+      ctx.fillStyle = '#060606';
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI / 4) * i;
+        const radius = i % 2 === 0 ? size * 1.12 : size * 0.62;
+        ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.save();
+      ctx.strokeStyle = `${baseColor}99`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 4; i++) {
+        const angle = (Math.PI / 2) * i + Math.PI / 8;
+        ctx.beginPath();
+        ctx.quadraticCurveTo(
+          Math.cos(angle) * size * 0.6,
+          Math.sin(angle) * size * 0.6,
+          Math.cos(angle + Math.PI / 8) * size * 0.95,
+          Math.sin(angle + Math.PI / 8) * size * 0.95
+        );
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const drawHumanoidAlienSilhouette = () => {
+      ctx.strokeStyle = baseColor;
+      ctx.fillStyle = '#050506';
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 1.1);
+      ctx.bezierCurveTo(size * 0.9, -size * 0.6, size * 0.9, size * 0.2, 0, size * 1.05);
+      ctx.bezierCurveTo(-size * 0.9, size * 0.2, -size * 0.9, -size * 0.6, 0, -size * 1.1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.save();
+      ctx.strokeStyle = `${baseColor}77`;
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 3; i++) {
+        const offset = -size * 0.45 + i * size * 0.45;
+        ctx.beginPath();
+        ctx.arc(0, offset, size * (0.85 - i * 0.15), Math.PI * 0.15, Math.PI * 0.85);
+        ctx.stroke();
+      }
+      ctx.restore();
+    };
+
+    const drawSlimoidSilhouette = () => {
+      ctx.strokeStyle = baseColor;
+      ctx.fillStyle = '#040605';
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.9);
+      ctx.quadraticCurveTo(size * 0.95, -size * 0.35, size * 0.7, size * 0.15);
+      ctx.quadraticCurveTo(size * 0.5, size * 1.05, 0, size * 1.2);
+      ctx.quadraticCurveTo(-size * 0.55, size * 0.95, -size * 0.8, size * 0.15);
+      ctx.quadraticCurveTo(-size * 1.05, -size * 0.55, 0, -size * 0.9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.save();
+      ctx.fillStyle = `${baseColor}55`;
+      for (let i = 0; i < 3; i++) {
+        const angle = Math.PI * (0.2 + 0.3 * i);
+        const dist = size * (0.7 + 0.1 * i);
+        ctx.beginPath();
+        ctx.ellipse(
+          Math.cos(angle) * dist * 0.4,
+          Math.sin(angle) * dist * 0.2 + size * 0.4,
+          size * 0.25,
+          size * 0.35,
+          angle / 2,
+          0,
+          Math.PI * 2
+        );
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    const drawAlienSilhouette = () => {
+      if (unit.alienSubtype === AlienSubtype.ARACNID) return drawAracnidSilhouette();
+      if (unit.alienSubtype === AlienSubtype.SLIMOID) return drawSlimoidSilhouette();
+      return drawHumanoidAlienSilhouette();
+    };
+
+    const drawSpellSilhouette = () => {
+      const haloRadius = size * 2.2;
+      const gradient = ctx.createRadialGradient(0, 0, size * 0.4, 0, 0, haloRadius);
+      gradient.addColorStop(0, `${baseColor}66`);
+      gradient.addColorStop(1, `${baseColor}00`);
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(0, 0, haloRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = baseColor;
+      ctx.lineWidth = 2.4;
+      ctx.shadowBlur = 24;
+      ctx.shadowColor = baseColor;
+      const shape = unit.spellShape || 'concentric';
+
+      if (shape === 'concentric') {
+        for (let i = 1; i <= 3; i++) {
+          ctx.beginPath();
+          ctx.setLineDash(i === 2 ? [4, 6] : []);
+          ctx.lineDashOffset = Date.now() / (180 + i * 60);
+          ctx.arc(0, 0, size * (0.8 + i * 0.55), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      } else if (shape === 'runes') {
+        ctx.beginPath();
         for (let i = 0; i < 6; i++) {
           const angle = (Math.PI / 3) * i;
-          ctx.lineTo(size * Math.cos(angle), size * Math.sin(angle));
+          ctx.lineTo(Math.cos(angle) * size * 1.4, Math.sin(angle) * size * 1.4);
         }
         ctx.closePath();
-        break;
-      case 'cross':
-        ctx.rect(-1.5, -size, 3, size * 2);
-        ctx.rect(-size, -1.5, size * 2, 3);
-        break;
-      case 'star':
-        for (let i = 0; i < 5; i++) {
-          ctx.lineTo(Math.cos((18 + i * 72) / 180 * Math.PI) * size, -Math.sin((18 + i * 72) / 180 * Math.PI) * size);
-          ctx.lineTo(Math.cos((54 + i * 72) / 180 * Math.PI) * (size/2), -Math.sin((54 + i * 72) / 180 * Math.PI) * (size/2));
+        ctx.stroke();
+        ctx.save();
+        ctx.lineWidth = 1.3;
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i;
+          const px = Math.cos(angle) * size * 1.4;
+          const py = Math.sin(angle) * size * 1.4;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(px * 0.6, py * 0.6);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(px * 0.9, py * 0.9);
+          ctx.lineTo(px * 0.95 + 2, py * 0.95 - 2);
+          ctx.stroke();
         }
-        ctx.closePath();
-        break;
+        ctx.restore();
+      } else {
+        ctx.save();
+        const wobble = Math.sin(Date.now() / 220) * 0.1;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size * 1.8, size * (1 + wobble), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, size, size * (0.6 + wobble * 0.5), Math.PI / 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(-size * 1.6, 0);
+        ctx.quadraticCurveTo(0, size * 0.7, size * 1.6, 0);
+        ctx.quadraticCurveTo(0, -size * 0.7, -size * 1.6, 0);
+        ctx.stroke();
+        ctx.restore();
+      }
+    };
+
+    if (unit.type === UnitType.SPELL) {
+      drawSpellSilhouette();
+    } else if (unit.visualFamily === 'ciber') {
+      drawAndroidSilhouette();
+    } else if (unit.visualFamily === 'organico') {
+      drawAlienSilhouette();
+    } else {
+      drawHumanoidSilhouette();
     }
-    
-    ctx.fill();
-    ctx.stroke();
 
     ctx.beginPath();
     ctx.fillStyle = teamColor;
