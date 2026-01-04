@@ -37,6 +37,7 @@ export enum TowerType {
 }
 
 export type ProjectileStyle = 'laser' | 'plasma' | 'missile' | 'beam' | 'none';
+export type ArenaState = 'normal' | 'overtime_glitch';
 
 export interface Card {
   id: string;
@@ -137,7 +138,7 @@ export interface VisualEffect {
   y: number;
   startX?: number;
   startY?: number;
-  type: 'explosion' | 'spark' | 'heal' | 'muzzle' | 'emp_wave' | 'laser_beam' | 'shockwave' | 'healing_field';
+  type: 'explosion' | 'spark' | 'heal' | 'muzzle' | 'emp_wave' | 'laser_beam' | 'shockwave' | 'healing_field' | 'glitch';
   timer: number;
   maxTimer: number;
   color: string;
@@ -184,6 +185,8 @@ export interface GameState {
   commanderAbilityCooldown: number; // Enfriamiento de la habilidad especial
   aiCommanderAbilityCooldown: number;
   aiSpecialAbility: SelectedSpecialAbility;
+  arenaState: ArenaState;
+  arenaStateSince?: number;
 }
 
 export type SpecialAbilityOptionType = 'toggle' | 'slider' | 'select';

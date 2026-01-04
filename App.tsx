@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility } from './types';
+import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState } from './types';
 import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
@@ -69,7 +69,9 @@ const App: React.FC = () => {
       difficulty: 1,
       commanderAbilityCooldown: 0,
       aiCommanderAbilityCooldown: 0,
-      aiSpecialAbility: rollRandomAbilitySelection()
+      aiSpecialAbility: rollRandomAbilitySelection(),
+      arenaState: 'normal',
+      arenaStateSince: 0
     };
   });
 

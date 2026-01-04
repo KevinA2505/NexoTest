@@ -432,6 +432,7 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     state.projectiles.forEach(p => drawProjectile(ctx, p));
 
     state.effects.forEach(ef => {
+      // Los futuros estados de arena (clima/bioma) podrían agregar estilos aquí sin modificar la lógica de unidades.
       const opacity = ef.timer / ef.maxTimer;
       ctx.save();
       ctx.globalAlpha = opacity;
@@ -507,6 +508,23 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
         ctx.moveTo(ef.startX, ef.startY);
         ctx.lineTo(ef.x, ef.y);
         ctx.stroke();
+      } else if (ef.type === 'glitch') {
+        const jitter = 6 + Math.random() * 12;
+        const flicker = 0.15 + opacity * 0.25;
+        const scatter = 2 + Math.random() * 4;
+        ctx.globalAlpha = flicker;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = 'rgba(255, 80, 80, 0.35)';
+        for (let i = 0; i < 6; i++) {
+          const dx = (Math.random() - 0.5) * jitter;
+          const dy = (Math.random() - 0.5) * jitter;
+          const size = (ef.radius || 18) * (0.3 + Math.random() * 0.5);
+          ctx.fillRect(ef.x + dx, ef.y + dy, size / 2, size / 4);
+          ctx.beginPath();
+          ctx.arc(ef.x + dx * scatter, ef.y + dy * scatter, size / 6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = 'source-over';
       }
       ctx.restore();
     });
