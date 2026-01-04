@@ -75,23 +75,31 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           });
         } else {
           // Hechizos de impacto único
-          const targets = [...newState.units, ...newState.towers].filter(t => 
-            !t.isDead && t.team !== ps.team && 
-            Math.hypot(t.x - ps.x, t.y - ps.y) <= (card.aoeRadius || 100)
-          );
+          const isAllySpell = card.targetPref === TargetPreference.ALLIES;
+          const targets = [...newState.units, ...newState.towers].filter(t => {
+            if (t.isDead) return false;
+            const sameTeam = t.team === ps.team;
+            if (isAllySpell ? !sameTeam : sameTeam) return false;
+            return Math.hypot(t.x - ps.x, t.y - ps.y) <= (card.aoeRadius || 100);
+          });
           
           targets.forEach(t => {
             if ('stunTimer' in t) {
                if (card.stunDuration) (t as GameUnit).stunTimer = card.stunDuration;
                if (card.dotDuration) (t as GameUnit).dotTimer = card.dotDuration;
             }
-            t.hp -= card.damage;
+            if (card.damage < 0) {
+              const maxHp = (t as GameUnit).maxHp ?? (t as Tower).maxHp ?? t.hp;
+              t.hp = Math.min(maxHp, t.hp + Math.abs(card.damage));
+            } else {
+              t.hp -= card.damage;
+            }
           });
 
           newState.effects.push({
             id: Math.random().toString(),
             x: ps.x, y: ps.y,
-            type: ps.cardId === 'orbital_laser' ? 'emp_wave' : 'explosion',
+            type: card.damage < 0 ? 'heal' : (ps.cardId === 'orbital_laser' ? 'emp_wave' : 'explosion'),
             timer: 800,
             maxTimer: 800,
             color: card.color,

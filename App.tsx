@@ -48,7 +48,7 @@ const App: React.FC = () => {
   });
   const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
   const [gameState, setGameState] = useState<GameState>(() => {
-    const initialSelection = ['infantry', 'marines', 'guardian', 'fighter', 'tank', 'iron_star_tank', 'nova_squad', 'orbital_laser', 'healing_matrix'];
+    const initialSelection = ['infantry', 'marines', 'guardian', 'fighter', 'nova_squad', 'iron_star_tank', 'tank', 'skyfire_radar', 'orbital_laser', 'healing_matrix'];
     return {
       playerEnergy: 5,
       aiEnergy: 5,
@@ -112,57 +112,32 @@ const App: React.FC = () => {
     if (!card) return;
 
     if (card.type === UnitType.SPELL) {
-      if (card.id === 'orbital_laser' || card.id === 'healing_matrix') {
-        setGameState(prev => {
-          const newState = { ...prev };
-          const king = newState.towers.find(t => t.team === team && t.type === TowerType.KING);
-          
-          newState.pendingSpells.push({
-            id: 'ps-' + Math.random(),
-            cardId: card.id,
-            team,
-            x, y,
-            timer: 1000 
-          });
+      setGameState(prev => {
+        const newState = { ...prev };
+        const king = newState.towers.find(t => t.team === team && t.type === TowerType.KING);
 
-          newState.effects.push({
-            id: 'beam-' + Math.random(),
-            x, y,
-            startX: king ? king.x : (team === Team.PLAYER ? 100 : ARENA_WIDTH - 100),
-            startY: king ? king.y : ARENA_HEIGHT / 2,
-            type: 'laser_beam',
-            timer: 1000,
-            maxTimer: 1000,
-            color: card.color
-          });
-
-          return newState;
+        newState.pendingSpells.push({
+          id: 'ps-' + Math.random(),
+          cardId: card.id,
+          team,
+          x, y,
+          timer: 1000 
         });
-      } else {
-        setGameState(prev => {
-          const newState = { ...prev };
-          const targets = [...newState.units, ...newState.towers].filter(t => !t.isDead && t.team !== team && Math.hypot(t.x - x, t.y - y) <= (card.aoeRadius || 100));
-          
-          targets.forEach(t => {
-            if ('stunTimer' in t) {
-               if (card.stunDuration) (t as GameUnit).stunTimer = card.stunDuration;
-               if (card.dotDuration) (t as GameUnit).dotTimer = card.dotDuration;
-            }
-            t.hp -= card.damage;
-          });
 
-          newState.effects.push({
-            id: Math.random().toString(),
-            x, y,
-            type: 'explosion',
-            timer: 800,
-            maxTimer: 800,
-            color: card.color,
-            radius: card.aoeRadius
-          });
-          return newState;
+        newState.effects.push({
+          id: 'beam-' + Math.random(),
+          x, y,
+          startX: king ? king.x : (team === Team.PLAYER ? 100 : ARENA_WIDTH - 100),
+          startY: king ? king.y : ARENA_HEIGHT / 2,
+          type: card.projectileType === 'beam' ? 'laser_beam' : (card.damage < 0 ? 'heal' : 'emp_wave'),
+          timer: 1000,
+          maxTimer: 1000,
+          color: card.color,
+          radius: card.aoeRadius
         });
-      }
+
+        return newState;
+      });
       return;
     }
 
