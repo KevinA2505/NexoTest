@@ -11,6 +11,18 @@ export enum UnitType {
   SPELL = 'SPELL'
 }
 
+export enum Faction {
+  HUMAN = 'HUMAN',
+  ANDROID = 'ANDROID',
+  ALIEN = 'ALIEN'
+}
+
+export enum AlienSubtype {
+  HUMANOID = 'HUMANOID',
+  ARACNID = 'ARACNID',
+  SLIMOID = 'SLIMOID'
+}
+
 export enum TargetPreference {
   ANY = 'ANY',
   TOWERS = 'TOWERS',
@@ -31,6 +43,8 @@ export interface Card {
   name: string;
   cost: number;
   type: UnitType;
+  faction: Faction;
+  alienSubtype?: AlienSubtype;
   hp: number;
   damage: number;
   speed: number;
