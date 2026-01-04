@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { CARD_LIBRARY, EMP_ABILITY_BALANCE, SPECIAL_ABILITIES, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
 import OverlayPortal from './OverlayPortal';
+import CardPreview from './CardPreview';
 import './overlays.css';
 
 interface DeckEditorProps {
@@ -16,6 +17,7 @@ interface DeckEditorProps {
 }
 
 const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, onOpenAbilityModal, selectedAbility }) => {
+  const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
   const toggleCard = (id: string) => {
     if (selection.includes(id)) {
       onUpdate(selection.filter(cid => cid !== id));
@@ -143,28 +145,26 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
                 <div 
                   key={card.id}
                   onClick={() => toggleCard(card.id)}
+                  onMouseEnter={() => setHoveredCardId(card.id)}
+                  onMouseLeave={() => setHoveredCardId(null)}
                   className={`
-                    relative p-3 border cursor-pointer transition-all duration-300 rounded flex flex-col justify-between h-48
-                    ${isSelected ? 'bg-[#00ccff]/10 border-[#00ccff] shadow-[0_0_15px_rgba(0,204,255,0.2)]' : 'bg-[#0a0a0a] border-white/10 hover:border-white/30'}
+                    relative p-3 border cursor-pointer transition-all duration-300 rounded flex flex-col gap-2 h-56
+                    ${isSelected ? 'bg-[#03131d] border-[#00ccff] shadow-[0_0_18px_rgba(0,204,255,0.22)]' : 'bg-[#0a0a0a] border-white/10 hover:border-white/30'}
                   `}
                 >
                   <div className="flex justify-between items-start">
-                    <span className={`text-[9px] font-bold uppercase truncate pr-2 ${isSelected ? 'text-[#00ccff]' : 'text-white/60'}`}>{card.name}</span>
-                    <span className={`text-[10px] font-black px-1.5 rounded-sm ${isSelected ? 'bg-[#00ccff] text-black' : 'bg-white/10 text-white/40'}`}>{card.cost}</span>
+                    <span className={`text-[10px] font-bold uppercase truncate pr-2 ${isSelected ? 'text-[#00ccff]' : 'text-white/70'}`}>{card.name}</span>
+                    <span className={`text-[9px] font-black px-2 rounded-sm border ${isSelected ? 'border-[#00ccff]/50 text-[#00ccff]' : 'border-white/10 text-white/60'}`}>
+                      {card.faction}
+                    </span>
                   </div>
 
-                  <div className="flex-1 flex items-center justify-center">
-                     <div 
-                       className="w-10 h-10 border flex items-center justify-center rotate-45"
-                       style={{ borderColor: card.color, opacity: isSelected ? 1 : 0.4 }}
-                     >
-                        <div className="w-3 h-3" style={{ backgroundColor: card.color }}></div>
-                     </div>
-                  </div>
-
-                  <div className="text-[8px] text-white/40 uppercase text-center mt-2 truncate">
-                    {card.type}
-                  </div>
+                  <CardPreview
+                    card={card}
+                    selected={isSelected}
+                    hovered={hoveredCardId === card.id}
+                    size="md"
+                  />
 
                   {isSelected && (
                     <div className="absolute -top-2 -right-2 w-5 h-5 bg-[#00ccff] text-black text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-black">

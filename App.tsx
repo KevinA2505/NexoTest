@@ -10,6 +10,7 @@ import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
 import SpecialAbilityModal from './components/SpecialAbilityModal';
+import CardPreview from './components/CardPreview';
 
 const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
   const ability = SPECIAL_ABILITIES[Math.floor(Math.random() * SPECIAL_ABILITIES.length)];
@@ -76,6 +77,7 @@ const App: React.FC = () => {
   });
 
   const [selectedCardIdx, setSelectedCardIdx] = useState<number | null>(null);
+  const [hoveredCardIdx, setHoveredCardIdx] = useState<number | null>(null);
   const [dragState, setDragState] = useState<{
     idx: number;
     card: Card;
@@ -431,33 +433,33 @@ const App: React.FC = () => {
             const card = CARD_LIBRARY.find(c => c.id === cardId);
             const isSelected = selectedCardIdx === idx;
             const canAfford = card ? gameState.playerEnergy >= card.cost : false;
+            if (!card) return null;
             return (
               <div
                 key={idx}
                 onClick={() => setSelectedCardIdx(isSelected ? null : idx)}
+                onMouseEnter={() => setHoveredCardIdx(idx)}
+                onMouseLeave={() => setHoveredCardIdx(null)}
                 onMouseDown={(e) => startCardDrag(e, idx, card, canAfford)}
                 className={`
-                  relative w-full h-28 border transition-all duration-300 flex flex-col justify-between p-2 rounded-md
-                  ${isSelected ? 'border-[#00ccff] translate-x-4 shadow-[0_0_25px_rgba(0,204,255,0.3)] bg-[#00ccff]/10' : 'border-[#1a3a5a] bg-[#0a0a0a] hover:border-[#00ccff]/50'}
+                  relative w-full h-36 border transition-all duration-300 flex flex-col justify-between p-2 rounded-md
+                  ${isSelected ? 'border-[#00ccff] translate-x-4 shadow-[0_0_25px_rgba(0,204,255,0.3)] bg-[#021018]' : 'border-[#1a3a5a] bg-[#0a0a0a] hover:border-[#00ccff]/50'}
                   ${canAfford ? 'cursor-pointer' : 'opacity-30 grayscale'}
                 `}
               >
                 <div className="flex justify-between items-start">
-                  <span className="text-[8px] text-[#00ccff] font-bold uppercase tracking-tighter leading-tight max-w-[70%]">{card?.name}</span>
-                  <span className="bg-[#00ccff] text-black text-[9px] font-black px-1 rounded-sm">{card?.cost}</span>
-                </div>
-                
-                <div className="flex-1 flex items-center justify-center">
-                   <div 
-                     className="w-6 h-6 border flex items-center justify-center rotate-45"
-                     style={{ borderColor: card?.color }}
-                   >
-                      <div className="w-1.5 h-1.5" style={{ backgroundColor: card?.color }}></div>
-                   </div>
+                  <span className="text-[9px] text-[#00ccff] font-bold uppercase tracking-tighter leading-tight max-w-[80%]">{card?.name}</span>
                 </div>
 
+                <CardPreview
+                  card={card}
+                  selected={isSelected}
+                  hovered={hoveredCardIdx === idx}
+                  size="md"
+                />
+
                 <div className="flex flex-col gap-0.5 border-t border-white/5 pt-1 mt-1">
-                   <div className="text-[6px] text-[#00ccff]/70 uppercase font-bold truncate">{card?.description}</div>
+                   <div className="text-[7px] text-[#00ccff]/70 uppercase font-bold truncate">{card?.description}</div>
                 </div>
               </div>
             );
@@ -466,9 +468,19 @@ const App: React.FC = () => {
           {gameState.status === 'PLAYING' && (
             <div className="mt-2 flex flex-col items-center opacity-40">
               <span className="text-[7px] text-white/40 uppercase mb-1">Sig.</span>
-              <div className="w-10 h-12 border border-white/10 bg-[#0a0a0a] flex items-center justify-center rounded">
-                <div className="w-3 h-3 border rotate-45" style={{ borderColor: CARD_LIBRARY.find(c => c.id === gameState.playerDeck[0])?.color }}></div>
-              </div>
+              {(() => {
+                const nextCard = CARD_LIBRARY.find(c => c.id === gameState.playerDeck[0]);
+                return nextCard ? (
+                <div className="w-full">
+                  <CardPreview
+                    card={nextCard}
+                    size="sm"
+                    subdued
+                    showCost={false}
+                  />
+                </div>
+                ) : null;
+              })()}
             </div>
           )}
         </div>
