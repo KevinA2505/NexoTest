@@ -172,7 +172,9 @@ const App: React.FC = () => {
         stunTimer: 0,
         dotTimer: 0,
         projectileType: card.projectileType,
-        isOverclocked: false
+        isOverclocked: false,
+        splitOnDeath: card.splitOnDeath,
+        spawnChildId: card.spawnChild
       });
     }
 

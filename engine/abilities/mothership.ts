@@ -39,7 +39,9 @@ export const createUnitsFromCard = (cardId: string, team: Team, lane: 'TOP' | 'B
       dotTimer: 0,
       projectileType: card.projectileType,
       isOverclocked: false,
-      collisionRadius: undefined
+      collisionRadius: undefined,
+      splitOnDeath: card.splitOnDeath,
+      spawnChildId: card.spawnChild
     });
   }
 

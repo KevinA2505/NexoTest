@@ -45,6 +45,8 @@ export interface Card {
   type: UnitType;
   faction: Faction;
   alienSubtype?: AlienSubtype;
+  splitOnDeath?: boolean;
+  spawnChild?: string;
   hp: number;
   damage: number;
   speed: number;
@@ -93,6 +95,8 @@ export interface GameUnit {
   isMothership?: boolean;
   payloadCardId?: string;
   payloadSpawnTimer?: number;
+  splitOnDeath?: boolean;
+  spawnChildId?: string;
 }
 
 export interface Tower {

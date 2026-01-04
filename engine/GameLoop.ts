@@ -136,7 +136,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   });
 
   // Update Units
-  const spawnedPayloadUnits: GameUnit[] = [];
+  const spawnedUnits: GameUnit[] = [];
 
   newState.units = newState.units.filter(u => !u.isDead).map(unit => {
     const updatedUnit = { ...unit };
@@ -163,7 +163,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
       while (updatedUnit.payloadSpawnTimer !== undefined && updatedUnit.payloadSpawnTimer <= 0 && payloadCard) {
         const payloadUnits = createUnitsFromCard(payloadCard.id, updatedUnit.team, updatedUnit.lane, updatedUnit.x + 18, updatedUnit.y);
-        spawnedPayloadUnits.push(...payloadUnits);
+        spawnedUnits.push(...payloadUnits);
         updatedUnit.payloadSpawnTimer += payloadInterval;
       }
     }
@@ -244,6 +244,15 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
     if (updatedUnit.hp <= 0) {
       updatedUnit.isDead = true;
+
+      if (updatedUnit.splitOnDeath && updatedUnit.spawnChildId) {
+        const childCard = CARD_LIBRARY.find(c => c.id === updatedUnit.spawnChildId && c.type !== UnitType.SPELL);
+        if (childCard) {
+          const splitUnits = createUnitsFromCard(childCard.id, updatedUnit.team, updatedUnit.lane, updatedUnit.x, updatedUnit.y);
+          spawnedUnits.push(...splitUnits);
+        }
+      }
+
       newState.effects.push({
         id: Math.random().toString(),
         x: updatedUnit.x, y: updatedUnit.y,
@@ -253,8 +262,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     return updatedUnit;
   });
 
-  if (spawnedPayloadUnits.length > 0) {
-    newState.units.push(...spawnedPayloadUnits);
+  if (spawnedUnits.length > 0) {
+    newState.units.push(...spawnedUnits);
   }
 
   // Update Towers
