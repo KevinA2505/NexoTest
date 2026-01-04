@@ -27,6 +27,9 @@ export const applyAracnoAbility = (state: GameState, casterTeam: Team, mode?: st
   const king = state.towers.find(t => t.team === casterTeam && t.type === TowerType.KING && !t.isDead);
   if (!king) return state;
 
+  const hasActiveHive = state.units.some(u => u.cardId === 'aracno_hive' && u.team === casterTeam && !u.isDead);
+  if (hasActiveHive) return state;
+
   const selectedMode = resolveAracnoMode(mode);
   const spawnCardId = MODE_TO_CARD[selectedMode];
   const position = getSpawnPosition(casterTeam, king.x, king.y);

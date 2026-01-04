@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
+import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
@@ -18,6 +18,12 @@ interface DeckEditorProps {
 
 const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, onOpenAbilityModal, selectedAbility }) => {
   const [hoveredCardId, setHoveredCardId] = useState<string | null>(null);
+  const visibleDeckCards = PLAYABLE_CARD_LIBRARY.filter(card => !card.id.startsWith('aracno_spider'));
+  const ARACNO_MODE_TO_CARD: Record<string, string> = {
+    lethal: 'aracno_spider_lethal',
+    healing: 'aracno_spider_heal',
+    kamikaze: 'aracno_spider_kami'
+  };
   const toggleCard = (id: string) => {
     if (selection.includes(id)) {
       onUpdate(selection.filter(cid => cid !== id));
@@ -42,6 +48,11 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
   const displayedAbilityCooldown = ability.id === 'mothership_command'
     ? Math.ceil(getMothershipCooldownMs() / 1000)
     : ability.cooldown;
+  const selectedAracnoModeKey = (selectedAbility.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
+  const selectedAracnoCardId = ARACNO_MODE_TO_CARD[selectedAracnoModeKey] || ARACNO_MODE_TO_CARD[ARACNO_HIVE_ABILITY_BALANCE.defaultMode];
+  const selectedAracnoCard = CARD_LIBRARY.find(c => c.id === selectedAracnoCardId);
+  const selectedAracnoMode = ARACNO_SPIDER_MODES[selectedAracnoModeKey as keyof typeof ARACNO_SPIDER_MODES] || ARACNO_SPIDER_MODES[ARACNO_HIVE_ABILITY_BALANCE.defaultMode as keyof typeof ARACNO_SPIDER_MODES];
+  const hiveSpawnIntervalSeconds = Math.ceil(ARACNO_HIVE_BALANCE.spawnIntervalMs / 1000);
   const renderAbilityConfigValue = (key: string, value: string | number | boolean) => {
     if (ability.id === 'emp_overwatch' && key === 'mode') {
       const mode = getEmpModeConfig(String(value));
@@ -53,6 +64,10 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
       const cooldown = Math.ceil(getMothershipCooldownMs() / 1000);
       const payloadInterval = Math.ceil(getMothershipPayloadIntervalMs(card.cost) / 1000);
       return `${card.name} · ${card.cost}⚡ · CD ${cooldown}s · Gén. ${payloadInterval}s`;
+    }
+    if (ability.id === 'aracno_hive' && key === 'mode') {
+      const card = selectedAracnoCard;
+      return `${card?.name || 'Araña'} · HP ${selectedAracnoMode.hp} · Daño ${selectedAracnoMode.damage} · Alcance ${selectedAracnoMode.range} · Spawn ${hiveSpawnIntervalSeconds}s · Decae ${Math.round(ARACNO_HIVE_BALANCE.decayPerSecond)} HP/s`;
     }
     return String(value);
   };
@@ -106,6 +121,26 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
                   );
                 })}
               </div>
+              {ability.id === 'aracno_hive' && selectedAracnoCard && (
+                <div className="mt-3 p-3 border border-white/10 rounded bg-black/30 flex gap-3 items-center">
+                  <CardPreview card={selectedAracnoCard} selected hovered={hoveredCardId === selectedAracnoCard.id} size="sm" />
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="text-[10px] uppercase text-white/60">Nido · Intervalo {hiveSpawnIntervalSeconds}s</div>
+                    <div className="text-sm font-black text-white capitalize">{selectedAracnoModeKey}</div>
+                    <div className="flex flex-wrap gap-2 text-[9px] text-white/60 uppercase tracking-wide">
+                      <span className="px-2 py-1 border border-white/10 rounded">HP {ARACNO_HIVE_BALANCE.hp}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Decadencia {Math.round(ARACNO_HIVE_BALANCE.decayPerSecond)} HP/s</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">2x {selectedAracnoCard.name}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Daño {selectedAracnoMode.damage}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Alcance {selectedAracnoMode.range}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Cadencia {selectedAracnoMode.attackSpeed}ms</span>
+                      {selectedAracnoModeKey === 'kamikaze' && (
+                        <span className="px-2 py-1 border border-white/10 rounded">Veneno {ARACNO_SPIDER_MODES.kamikaze.dotDuration / 1000}s</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={onOpenAbilityModal}
                 className="mt-2 w-full px-3 py-2 text-[10px] font-bold uppercase tracking-widest border border-[#00ccff]/60 text-[#00ccff] hover:bg-[#00ccff] hover:text-black transition"
@@ -139,7 +174,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
 
           {/* Card Grid */}
           <div className="lg:col-span-3 overflow-y-auto max-h-[75vh] pr-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {PLAYABLE_CARD_LIBRARY.map(card => {
+            {visibleDeckCards.map(card => {
               const isSelected = selection.includes(card.id);
               return (
                 <div 

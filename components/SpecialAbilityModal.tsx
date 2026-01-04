@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
+import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
 import OverlayPortal from './OverlayPortal';
+import CardPreview from './CardPreview';
 import './overlays.css';
 
 interface SpecialAbilityModalProps {
@@ -52,6 +53,16 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   const mothershipCooldownSeconds = Math.ceil(getMothershipCooldownMs() / 1000);
   const mothershipPayloadSeconds = Math.ceil(getMothershipPayloadIntervalMs(selectedHangarCard?.cost) / 1000);
   const displayedCooldown = selectedAbility.id === 'mothership_command' ? mothershipCooldownSeconds : selectedAbility.cooldown;
+  const ARACNO_MODE_TO_CARD: Record<string, string> = {
+    lethal: 'aracno_spider_lethal',
+    healing: 'aracno_spider_heal',
+    kamikaze: 'aracno_spider_kami'
+  };
+  const selectedAracnoModeKey = (currentConfig.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
+  const selectedAracnoCardId = ARACNO_MODE_TO_CARD[selectedAracnoModeKey] || ARACNO_MODE_TO_CARD[ARACNO_HIVE_ABILITY_BALANCE.defaultMode];
+  const selectedAracnoCard = CARD_LIBRARY.find(c => c.id === selectedAracnoCardId);
+  const selectedAracnoMode = ARACNO_SPIDER_MODES[selectedAracnoModeKey as keyof typeof ARACNO_SPIDER_MODES] || ARACNO_SPIDER_MODES[ARACNO_HIVE_ABILITY_BALANCE.defaultMode as keyof typeof ARACNO_SPIDER_MODES];
+  const hiveSpawnIntervalSeconds = Math.ceil(ARACNO_HIVE_BALANCE.spawnIntervalMs / 1000);
 
   const renderOption = (optionKey: string) => {
     const option = selectedAbility.options.find(o => o.key === optionKey);
@@ -252,6 +263,40 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                     <span className="px-2 py-1 border border-white/10 rounded">Coste habilidad {MOTHERSHIP_BALANCE.cost}⚡</span>
                     <span className="px-2 py-1 border border-white/10 rounded">CD fijo {mothershipCooldownSeconds}s</span>
                     <span className="px-2 py-1 border border-white/10 rounded">Genera carga cada {mothershipPayloadSeconds}s</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {selectedAbility.id === 'aracno_hive' && selectedAracnoCard && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
+                  <div className="text-[10px] uppercase text-white/50">Estructura</div>
+                  <div className="text-lg font-black text-[#00ccff]">Nido Aracno</div>
+                  <p className="text-[10px] text-white/60 uppercase tracking-wider">Temporario · {ARACNO_HIVE_ABILITY_BALANCE.cost}⚡ · CD {ARACNO_HIVE_ABILITY_BALANCE.cooldown}s</p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                    <span className="px-2 py-1 border border-white/10 rounded">HP {ARACNO_HIVE_BALANCE.hp}</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">Decae {Math.round(ARACNO_HIVE_BALANCE.decayPerSecond)} HP/s</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">Intervalo {hiveSpawnIntervalSeconds}s</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">Genera 2x {selectedAracnoCard.name}</span>
+                  </div>
+                </div>
+                <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2 flex gap-3 items-center">
+                  <CardPreview card={selectedAracnoCard} selected size="md" />
+                  <div className="flex-1">
+                    <div className="text-[10px] uppercase text-white/50">Modo seleccionado</div>
+                    <div className="text-lg font-black text-white capitalize">{selectedAracnoModeKey}</div>
+                    <p className="text-[10px] text-white/60 uppercase tracking-wider">{selectedAracnoCard.description}</p>
+                    <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                      <span className="px-2 py-1 border border-white/10 rounded">HP {selectedAracnoMode.hp}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Daño {selectedAracnoMode.damage}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Vel. {selectedAracnoMode.speed.toFixed(2)}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Alcance {selectedAracnoMode.range}</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Cadencia {selectedAracnoMode.attackSpeed}ms</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Objetivo {selectedAracnoMode.targetPref}</span>
+                      {selectedAracnoModeKey === 'kamikaze' && (
+                        <span className="px-2 py-1 border border-white/10 rounded">DOT {ARACNO_SPIDER_MODES.kamikaze.dotDuration / 1000}s</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

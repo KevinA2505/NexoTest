@@ -114,6 +114,8 @@ const App: React.FC = () => {
       }
 
       if (activeAbility.id === 'aracno_hive') {
+        const hasActiveHive = prev.units.some(u => u.cardId === 'aracno_hive' && u.team === Team.PLAYER && !u.isDead);
+        if (hasActiveHive) return prev;
         const selectedMode = (specialAbility.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
         return applyAracnoAbility(prev, Team.PLAYER, selectedMode);
       }
@@ -346,6 +348,8 @@ const App: React.FC = () => {
       }
 
       if (selection.id === 'aracno_hive') {
+        const hasActiveHive = prev.units.some(u => u.cardId === 'aracno_hive' && u.team === Team.AI && !u.isDead);
+        if (hasActiveHive) return prev;
         const selectedMode = (selection.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
         return applyAracnoAbility(prev, Team.AI, selectedMode);
       }
@@ -427,9 +431,11 @@ const App: React.FC = () => {
   const selectedHangarCardId = specialAbility.configuration.hangarUnit as string | undefined;
   const selectedHangarCard = PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
   const playerHasMothership = gameState.units.some(u => u.team === Team.PLAYER && u.isMothership && !u.isDead);
+  const playerHasAracnoHive = gameState.units.some(u => u.cardId === 'aracno_hive' && u.team === Team.PLAYER && !u.isDead);
   const abilityReady = gameState.playerEnergy >= abilityCost
     && gameState.commanderAbilityCooldown <= 0
-    && (activeAbility.id !== 'mothership_command' || (!!selectedHangarCard && !playerHasMothership));
+    && (activeAbility.id !== 'mothership_command' || (!!selectedHangarCard && !playerHasMothership))
+    && (activeAbility.id !== 'aracno_hive' || !playerHasAracnoHive);
   const currentEmpMode = getEmpModeConfig(specialAbility.configuration.mode as string);
   const currentMothershipCooldown = Math.ceil(getMothershipCooldownMs() / 1000);
   const currentMothershipPayloadInterval = Math.ceil(getMothershipPayloadIntervalMs(selectedHangarCard?.cost) / 1000);
