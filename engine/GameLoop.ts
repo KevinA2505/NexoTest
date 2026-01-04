@@ -1,5 +1,5 @@
 
-import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell } from '../types';
+import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 
@@ -208,7 +208,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           newState.effects.push({
             id: Math.random().toString(),
             x: updatedUnit.x, y: updatedUnit.y,
-            type: 'muzzle', timer: 150, maxTimer: 150, color: updatedUnit.color
+            type: 'muzzle', timer: 150, maxTimer: 150, color: updatedUnit.color,
+            sourceFaction: updatedUnit.faction,
+            sourceStyle: updatedUnit.projectileType
           });
 
           if (updatedUnit.projectileType !== 'none' && updatedUnit.projectileType !== 'beam') {
@@ -323,7 +325,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           id: 'sw-' + Math.random(),
           x: tower.x, y: tower.y,
           type: 'shockwave', timer: 600, maxTimer: 600, color: tower.team === Team.PLAYER ? '#00ccff' : '#ff3366',
-          radius: 150
+          radius: 150,
+          sourceFaction: tower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID,
+          variant: tower.team === Team.PLAYER ? 'ember' : 'ionic'
         });
       }
     }
@@ -335,7 +339,14 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
       if (target) {
         spawnProjectile(updatedTower, target, newState, 'plasma');
         updatedTower.lastAttack = newState.time;
-        newState.effects.push({ id: Math.random().toString(), x: tower.x, y: tower.y, type: 'muzzle', timer: 200, maxTimer: 200, color: tower.team === Team.PLAYER ? '#00ccff' : '#ff3366' });
+        newState.effects.push({
+          id: Math.random().toString(),
+          x: tower.x, y: tower.y,
+          type: 'muzzle', timer: 200, maxTimer: 200,
+          color: tower.team === Team.PLAYER ? '#00ccff' : '#ff3366',
+          sourceFaction: tower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID,
+          sourceStyle: 'plasma'
+        });
       }
     }
 
@@ -354,12 +365,20 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     if (!target || target.hp <= 0) return false;
 
     const angle = Math.atan2(target.y - p.y, target.x - p.x);
-    p.x += Math.cos(angle) * p.speed;
-    p.y += Math.sin(angle) * p.speed;
+    const speedFactor = p.originUnitType === UnitType.AIR ? 1.05 : 1;
+    p.x += Math.cos(angle) * p.speed * speedFactor;
+    p.y += Math.sin(angle) * p.speed * speedFactor;
 
     if (Math.hypot(target.x - p.x, target.y - p.y) < 12) {
       target.hp -= p.damage;
-      newState.effects.push({ id: Math.random().toString(), x: target.x, y: target.y, type: 'spark', timer: 200, maxTimer: 200, color: p.color });
+      newState.effects.push({
+        id: Math.random().toString(),
+        x: target.x, y: target.y,
+        type: 'spark', timer: 200, maxTimer: 200, color: p.color,
+        sourceFaction: p.faction,
+        sourceStyle: p.style,
+        variant: p.faction === Faction.ALIEN ? 'bio' : p.faction === Faction.ANDROID ? 'ionic' : 'ember'
+      });
       return false;
     }
     return true;
@@ -455,21 +474,28 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
 };
 
 const spawnProjectile = (source: GameUnit | Tower, target: { x: number, y: number, id: string }, state: GameState, forcedStyle?: any) => {
-  const isTower = 'type' in source;
-  const style = forcedStyle || (isTower ? 'plasma' : (source as GameUnit).projectileType);
+  const isTower = 'cardId' in source === false;
+  const baseStyle = forcedStyle || (isTower ? 'plasma' : (source as GameUnit).projectileType);
+  const cardId = !isTower ? (source as GameUnit).cardId : undefined;
+  const faction = isTower ? (source.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID) : (source as GameUnit).faction;
   const color = isTower ? (source.team === Team.PLAYER ? '#00ccff' : '#ff3366') : (source as GameUnit).color;
-  
+  const originUnitType = !isTower ? (source as GameUnit).type : undefined;
+  const speed = baseStyle === 'missile' ? 4.4 : baseStyle === 'beam' ? 10 : 8.2;
+
   state.projectiles.push({
     id: Math.random().toString(),
     x: source.x,
     y: source.y,
     targetX: target.x,
     targetY: target.y,
-    speed: style === 'missile' ? 4 : 8,
+    speed,
     damage: source.damage,
     team: source.team,
     targetId: target.id,
-    style: style,
-    color: color
+    style: baseStyle,
+    color,
+    sourceCardId: cardId,
+    faction,
+    originUnitType
   });
 };

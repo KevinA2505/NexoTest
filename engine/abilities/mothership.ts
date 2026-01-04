@@ -1,5 +1,5 @@
 import { ARENA_HEIGHT, ARENA_WIDTH, CARD_LIBRARY, MOTHERSHIP_BALANCE, MOTHERSHIP_HP } from '../../constants';
-import { GameState, GameUnit, TargetPreference, Team, UnitType } from '../../types';
+import { Faction, GameState, GameUnit, TargetPreference, Team, UnitType } from '../../types';
 
 const SPAWN_OFFSET_X = 140;
 const SPAWN_OFFSET_Y = 150;
@@ -16,6 +16,7 @@ export const createUnitsFromCard = (cardId: string, team: Team, lane: 'TOP' | 'B
     units.push({
       id: Math.random().toString(),
       cardId: card.id,
+      faction: card.faction,
       team,
       type: card.type,
       x: originX + offsetX,
@@ -85,6 +86,7 @@ export const applyMothershipAbility = (state: GameState, casterTeam: Team, hanga
     id: 'ms-' + Math.random(),
     cardId: 'mothership_flagship',
     team: casterTeam,
+    faction: Faction.ANDROID,
     type: UnitType.AIR,
     x: spawnX,
     y: spawnY,
