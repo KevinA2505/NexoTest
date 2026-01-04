@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction } from './types';
-import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY } from './constants';
+import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
+import { applyAracnoAbility } from './engine/abilities/aracno';
 import { applyMothershipAbility, getMothershipCooldownMs, getMothershipPayloadIntervalMs } from './engine/abilities/mothership';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
@@ -110,6 +111,11 @@ const App: React.FC = () => {
         const hasActiveMothership = prev.units.some(u => u.team === Team.PLAYER && u.isMothership && !u.isDead);
         if (hasActiveMothership) return prev;
         return applyMothershipAbility(prev, Team.PLAYER, selectedHangarCard);
+      }
+
+      if (activeAbility.id === 'aracno_hive') {
+        const selectedMode = (specialAbility.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
+        return applyAracnoAbility(prev, Team.PLAYER, selectedMode);
       }
 
       return prev;
@@ -337,6 +343,11 @@ const App: React.FC = () => {
         if (!hangarCard) return prev;
         if (aiHasMothership) return prev;
         return applyMothershipAbility(prev, Team.AI, hangarCard);
+      }
+
+      if (selection.id === 'aracno_hive') {
+        const selectedMode = (selection.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
+        return applyAracnoAbility(prev, Team.AI, selectedMode);
       }
 
       return prev;

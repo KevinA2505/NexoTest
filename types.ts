@@ -107,6 +107,17 @@ export interface GameUnit {
   payloadSpawnTimer?: number;
   splitOnDeath?: boolean;
   spawnChildId?: string;
+  spawnIntervalMs?: number;
+  spawnCountdownMs?: number;
+  decayPerMs?: number;
+  spawnCardId?: string;
+  spawnCount?: number;
+  abilityInstanceId?: string;
+  spawnOnHitEffect?: 'heal' | 'poison';
+  spawnOnHitDotDurationMs?: number;
+  onHitEffect?: 'heal' | 'poison';
+  onHitDotDurationMs?: number;
+  spawnMode?: string;
 }
 
 export interface Tower {
@@ -142,6 +153,10 @@ export interface Projectile {
   sourceCardId?: string;
   faction: Faction;
   originUnitType?: UnitType;
+  onHitEffect?: 'heal' | 'poison';
+  onHitDotDurationMs?: number;
+  sourceUnitId?: string;
+  sourceAbilityInstanceId?: string;
 }
 
 export interface VisualEffect {
