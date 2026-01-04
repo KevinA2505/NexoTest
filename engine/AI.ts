@@ -72,6 +72,7 @@ export class NexoAI {
     if (!ability) return false;
     if (state.aiEnergy < ability.cost) return false;
     const aiHasMothership = state.units.some(u => u.team === Team.AI && u.isMothership && !u.isDead);
+    const aiHasAracnoHive = state.units.some(u => u.cardId === 'aracno_hive' && u.team === Team.AI && !u.isDead);
 
     const playerUnits = state.units.filter(u => u.team === Team.PLAYER && !u.isDead);
     const aiUnits = state.units.filter(u => u.team === Team.AI && !u.isDead);
@@ -102,6 +103,21 @@ export class NexoAI {
       const hasEnergyToCommit = state.aiEnergy >= ability.cost + Math.max(0, hangarCard.cost - 2);
 
       if (hasEnergyToCommit && (aiUnits.length < playerUnits.length || aiIsBehind || state.aiEnergy > MAX_ENERGY * 0.8)) {
+        onAbility(state.aiSpecialAbility);
+        return true;
+      }
+    }
+
+    if (ability.id === 'aracno_hive') {
+      if (aiHasAracnoHive) return false;
+      const aiKing = state.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);
+      const enemyPressureNearKing = aiKing
+        ? playerUnits.some(u => Math.hypot(u.x - aiKing.x, u.y - aiKing.y) < 260)
+        : false;
+      const canCounterPush = state.aiEnergy >= ability.cost + 3 && aiUnits.some(u => u.x > ARENA_WIDTH * 0.55);
+      const hasEnergyOverflow = state.aiEnergy > MAX_ENERGY * 0.75 && playerUnits.length <= aiUnits.length;
+
+      if (enemyPressureNearKing || canCounterPush || hasEnergyOverflow) {
         onAbility(state.aiSpecialAbility);
         return true;
       }

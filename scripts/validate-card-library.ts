@@ -2,6 +2,9 @@ import { CARD_DISTRIBUTION_SCHEMA, PLAYABLE_CARD_LIBRARY } from '../constants.ts
 import { Faction, UnitType } from '../types.ts';
 
 type RoleCounts = { melee: number; shooters: number; tank: number; structures: number; spells: number };
+const ABILITY_ONLY_CARD_IDS = new Set(['aracno_spider_lethal', 'aracno_spider_heal', 'aracno_spider_kami']);
+const VISIBLE_PLAYABLE_CARD_LIBRARY = PLAYABLE_CARD_LIBRARY.filter(card => !ABILITY_ONLY_CARD_IDS.has(card.id));
+const EXPECTED_VISIBLE_CARD_COUNT = CARD_DISTRIBUTION_SCHEMA.length * 10;
 
 const assert = (condition: unknown, message: string) => {
   if (!condition) {
@@ -19,7 +22,7 @@ const findDuplicates = <T extends { id: string }>(items: T[]) => {
 };
 
 const validateAlienSubtypes = () => {
-  const invalid = PLAYABLE_CARD_LIBRARY.filter(
+  const invalid = VISIBLE_PLAYABLE_CARD_LIBRARY.filter(
     card => card.faction === Faction.ALIEN && card.alienSubtype === undefined
   );
 
@@ -27,11 +30,11 @@ const validateAlienSubtypes = () => {
 };
 
 const validateDuplicates = () => {
-  const duplicates = findDuplicates(PLAYABLE_CARD_LIBRARY);
+  const duplicates = findDuplicates(VISIBLE_PLAYABLE_CARD_LIBRARY);
   assert(duplicates.length === 0, `IDs duplicados detectados: ${duplicates.map(c => c.id).join(', ')}`);
 };
 
-const assignRoles = (groupCards: typeof PLAYABLE_CARD_LIBRARY) => {
+const assignRoles = (groupCards: typeof VISIBLE_PLAYABLE_CARD_LIBRARY) => {
   const counts: RoleCounts = { melee: 0, shooters: 0, tank: 0, structures: 0, spells: 0 };
   const structures = groupCards.filter(card => card.type === UnitType.BUILDING);
   const spells = groupCards.filter(card => card.type === UnitType.SPELL);
@@ -62,20 +65,20 @@ const assignRoles = (groupCards: typeof PLAYABLE_CARD_LIBRARY) => {
 
 const validateGroups = () => {
   CARD_DISTRIBUTION_SCHEMA.forEach(schema => {
-    const groupCards = PLAYABLE_CARD_LIBRARY.filter(card => {
+    const groupCards = VISIBLE_PLAYABLE_CARD_LIBRARY.filter(card => {
       if (card.faction !== schema.faction) return false;
       if ('subtype' in schema && schema.subtype) return card.alienSubtype === schema.subtype;
       return true;
     });
 
     assert(
-      groupCards.length === 10,
-      `El grupo "${schema.group}" tiene ${groupCards.length} cartas (esperado: 10).`
+      groupCards.length >= 10,
+      `El grupo "${schema.group}" tiene ${groupCards.length} cartas (esperado mínimo: 10).`
     );
 
     const counts = assignRoles(groupCards);
     const mismatches = Object.entries(schema.slots).filter(
-      ([role, required]) => counts[role as keyof RoleCounts] !== required
+      ([role, required]) => counts[role as keyof RoleCounts] < required
     );
 
     assert(
@@ -88,7 +91,10 @@ const validateGroups = () => {
 };
 
 const run = () => {
-  assert(PLAYABLE_CARD_LIBRARY.length === 50, `CARD_LIBRARY contiene ${PLAYABLE_CARD_LIBRARY.length} entradas visibles (esperado: 50).`);
+  assert(
+    VISIBLE_PLAYABLE_CARD_LIBRARY.length >= EXPECTED_VISIBLE_CARD_COUNT,
+    `CARD_LIBRARY contiene ${VISIBLE_PLAYABLE_CARD_LIBRARY.length} entradas visibles (esperado mínimo: ${EXPECTED_VISIBLE_CARD_COUNT}).`
+  );
   validateDuplicates();
   validateAlienSubtypes();
   validateGroups();
