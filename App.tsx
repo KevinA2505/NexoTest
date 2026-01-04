@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState } from './types';
+import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction } from './types';
 import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
@@ -152,6 +152,7 @@ const App: React.FC = () => {
       newUnits.push({
         id: Math.random().toString(),
         cardId: card.id,
+        faction: card.faction,
         team,
         type: card.type,
         x: x + offsetX,

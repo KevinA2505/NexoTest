@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
-import { GameState, Team, TowerType, UnitType } from '../types';
+import { Faction, GameState, ProjectileStyle, Team, TowerType, UnitType } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BRIDGE_GAP_HALF, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_X } from '../constants';
 
 interface ArenaProps {
@@ -132,43 +132,199 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
   };
 
   const drawProjectile = (ctx: CanvasRenderingContext2D, p: any) => {
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = p.color;
-    ctx.fillStyle = p.color;
+    const faction: Faction = p.faction || Faction.HUMAN;
+    const style: ProjectileStyle = p.style;
+    const isAirOrigin = p.originUnitType === UnitType.AIR;
+    const sizeBase = style === 'missile' ? 6 : style === 'beam' ? 3 : 4;
+    const wobble = (offset: number, amp: number) => Math.sin(Date.now() / 180 + offset) * amp;
 
-    if (p.style === 'laser') {
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = p.color;
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      const angle = Math.atan2(p.targetY - p.y, p.targetX - p.x);
-      ctx.lineTo(p.x - Math.cos(angle) * 40, p.y - Math.sin(angle) * 40);
-      ctx.stroke();
-    } else if (p.style === 'missile') {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 0.3;
-      for (let i = 0; i < 3; i++) {
-          ctx.beginPath();
-          ctx.arc(p.x - (Math.random() * 10), p.y - (Math.random() * 10), 3, 0, Math.PI * 2);
-          ctx.fill();
+    const renderTrail = () => {
+      if (style === 'missile') {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        const tailLength = isAirOrigin ? 18 : 14;
+        const gradient = ctx.createLinearGradient(p.x, p.y, p.x - tailLength, p.y + wobble(1, 2));
+        gradient.addColorStop(0, p.color);
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - 3);
+        ctx.lineTo(p.x - tailLength, p.y + wobble(2, 1.5) - 5);
+        ctx.lineTo(p.x - tailLength * 0.8, p.y + wobble(3, 1.5) + 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
       }
-      ctx.globalAlpha = 1.0;
-    } else if (p.style === 'beam') {
-      ctx.lineWidth = 2;
+
+      if (style === 'plasma') {
+        ctx.save();
+        ctx.globalAlpha = 0.6;
+        const pulse = 0.8 + Math.sin(Date.now() / 120) * 0.2;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, sizeBase * 1.4 * pulse, 0, Math.PI * 2);
+        ctx.fillStyle = `${p.color}55`;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      if (style === 'beam') {
+        ctx.save();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = p.color;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.targetX, p.targetY);
+        ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        for (let i = 0; i < 3; i++) {
+          const phase = Date.now() / 200 + i * 1.7;
+          const t = (Math.sin(phase) * 0.5 + 0.5);
+          const ix = p.x + (p.targetX - p.x) * t;
+          const iy = p.y + (p.targetY - p.y) * t;
+          ctx.beginPath();
+          ctx.arc(ix, iy, 1 + Math.random() * 1.2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+    };
+
+    const renderShape = () => {
+      ctx.save();
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = p.color;
+      ctx.fillStyle = p.color;
       ctx.strokeStyle = p.color;
-      ctx.setLineDash([2, 2]); 
-      ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.targetX, p.targetY);
-      ctx.stroke();
-      ctx.setLineDash([]);
-    } else {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+
+      const angle = Math.atan2(p.targetY - p.y, p.targetX - p.x);
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+
+      const size = sizeBase + (isAirOrigin ? 1 : 0);
+
+      if (style === 'laser') {
+        if (faction === Faction.ANDROID) {
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = p.color;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-32, 0);
+          ctx.stroke();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#ffffff88';
+          ctx.beginPath();
+          ctx.moveTo(-8, -2);
+          ctx.lineTo(-24, 2);
+          ctx.stroke();
+        } else if (faction === Faction.ALIEN) {
+          ctx.beginPath();
+          ctx.ellipse(0, 0, size + 2, size * 0.8 + wobble(0, 0.4), 0.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.7;
+          ctx.beginPath();
+          ctx.arc(-size, wobble(1, 0.8), size * 0.6, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-28, 0);
+          ctx.stroke();
+        }
+      } else if (style === 'missile') {
+        if (faction === Faction.ANDROID) {
+          ctx.beginPath();
+          ctx.moveTo(size + 2, 0);
+          ctx.lineTo(-size - 4, -size / 1.8);
+          ctx.lineTo(-size - 4, size / 1.8);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#0ff';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(-size - 4, -size / 1.2);
+          ctx.lineTo(-size - 8, 0);
+          ctx.lineTo(-size - 4, size / 1.2);
+          ctx.stroke();
+        } else if (faction === Faction.ALIEN) {
+          ctx.beginPath();
+          ctx.moveTo(size + 3, 0);
+          ctx.quadraticCurveTo(-size * 0.3, -size * 1.4 + wobble(2, 1.2), -size - 4, 0);
+          ctx.quadraticCurveTo(-size * 0.3, size * 1.4 + wobble(3, 1.2), size + 3, 0);
+          ctx.fill();
+          ctx.globalAlpha = 0.8;
+          ctx.beginPath();
+          ctx.arc(-size / 2, wobble(1, 0.6), size * 0.7, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(size, 0);
+          ctx.lineTo(-size, -size / 2);
+          ctx.lineTo(-size, size / 2);
+          ctx.closePath();
+          ctx.fill();
+          ctx.strokeStyle = '#fff8';
+          ctx.stroke();
+        }
+      } else if (style === 'beam') {
+        if (faction === Faction.ANDROID) {
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-28, -2, 32, 4);
+          ctx.fillStyle = '#ffffffaa';
+          ctx.fillRect(-18, -1, 14, 2);
+        } else if (faction === Faction.ALIEN) {
+          ctx.beginPath();
+          ctx.ellipse(-10, 0, size * 1.6, size * 0.9 + wobble(0, 0.4), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = `${p.color}88`;
+          ctx.beginPath();
+          ctx.ellipse(4, wobble(1, 0.4), size, size * 0.6, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(-24, 0);
+          ctx.stroke();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = '#ffffff66';
+          ctx.beginPath();
+          ctx.moveTo(-6, -1);
+          ctx.lineTo(-18, 1);
+          ctx.stroke();
+        }
+      } else {
+        if (faction === Faction.ANDROID) {
+          ctx.beginPath();
+          ctx.rect(-size, -size / 1.4, size * 2.2, size * 1.4);
+          ctx.fill();
+          ctx.strokeStyle = '#0ff';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        } else if (faction === Faction.ALIEN) {
+          ctx.beginPath();
+          ctx.ellipse(0, wobble(0, 0.5), size * 1.2, size, wobble(1, 0.2), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 0.7;
+          ctx.beginPath();
+          ctx.arc(-size * 0.4, wobble(2, 0.6), size * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+    };
+
+    renderTrail();
+    renderShape();
     ctx.shadowBlur = 0;
   };
 
@@ -453,11 +609,57 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
         ctx.stroke();
         ctx.setLineDash([]);
       } else if (ef.type === 'muzzle') {
-        ctx.beginPath(); ctx.arc(ef.x, ef.y, 22 * (1-opacity), 0, Math.PI*2); ctx.fill();
+        const pulse = (1 - opacity);
+        const styleHint: ProjectileStyle | undefined = (ef as any).sourceStyle;
+        if (styleHint === 'beam' || styleHint === 'laser') {
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(ef.x, ef.y, 16 * pulse, 0, Math.PI * 2); ctx.stroke();
+          ctx.beginPath(); ctx.arc(ef.x, ef.y, 8 * pulse, 0, Math.PI * 2); ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.arc(ef.x, ef.y, 22 * pulse, 0, Math.PI*2); ctx.fill();
+        }
       } else if (ef.type === 'heal') {
         ctx.font = 'bold 28px monospace'; ctx.fillText('+', ef.x - 8, ef.y - (1 - opacity) * 60);
       } else if (ef.type === 'spark') {
-        ctx.beginPath(); ctx.arc(ef.x, ef.y, 4, 0, Math.PI * 2); ctx.fill();
+        const variant = (ef as any).variant || ((ef as any).sourceFaction === Faction.ALIEN ? 'bio' : (ef as any).sourceFaction === Faction.ANDROID ? 'ionic' : 'ember');
+        if (variant === 'ionic') {
+          ctx.save();
+          ctx.strokeStyle = ef.color;
+          ctx.lineWidth = 1.5;
+          for (let i = 0; i < 6; i++) {
+            const angle = (Math.PI * 2 / 6) * i + Date.now() / 200;
+            const len = 10 + Math.random() * 6;
+            ctx.beginPath();
+            ctx.moveTo(ef.x, ef.y);
+            ctx.lineTo(ef.x + Math.cos(angle) * len, ef.y + Math.sin(angle) * len);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (variant === 'bio') {
+          ctx.save();
+          ctx.fillStyle = ef.color;
+          for (let i = 0; i < 5; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 2 + Math.random() * 3;
+            const dist = 3 + Math.random() * 8;
+            ctx.beginPath();
+            ctx.ellipse(ef.x + Math.cos(angle) * dist, ef.y + Math.sin(angle) * dist, radius, radius * 1.4, Math.random(), 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        } else {
+          ctx.beginPath(); ctx.arc(ef.x, ef.y, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#ffffffaa';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 3; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const len = 8 + Math.random() * 6;
+            ctx.beginPath();
+            ctx.moveTo(ef.x, ef.y);
+            ctx.lineTo(ef.x + Math.cos(angle) * len, ef.y + Math.sin(angle) * len);
+            ctx.stroke();
+          }
+        }
       } else if (ef.type === 'emp_wave') {
         const radius = ef.radius || 400;
         ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * radius, 0, Math.PI * 2); ctx.lineWidth = 10; ctx.stroke();

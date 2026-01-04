@@ -69,6 +69,7 @@ export interface Card {
 export interface GameUnit {
   id: string;
   cardId: string;
+  faction: Faction;
   team: Team;
   type: UnitType;
   x: number;
@@ -130,6 +131,9 @@ export interface Projectile {
   targetId: string;
   style: ProjectileStyle;
   color: string;
+  sourceCardId?: string;
+  faction: Faction;
+  originUnitType?: UnitType;
 }
 
 export interface VisualEffect {
@@ -143,6 +147,9 @@ export interface VisualEffect {
   maxTimer: number;
   color: string;
   radius?: number;
+  sourceFaction?: Faction;
+  sourceStyle?: ProjectileStyle;
+  variant?: 'ionic' | 'bio' | 'ember';
 }
 
 export interface PendingSpell {
