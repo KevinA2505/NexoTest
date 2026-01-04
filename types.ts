@@ -209,8 +209,8 @@ export interface GameState {
   pendingSpells: PendingSpell[];
   activeSpells: ActiveSpell[]; // Hechizos persistentes (como Matriz de Sanación)
   time: number;
-  status: 'START' | 'PLAYING' | 'VICTORY' | 'DEFEAT' | 'CODEX' | 'DECK_EDITOR';
-  previousStatus: 'START' | 'PLAYING' | 'VICTORY' | 'DEFEAT' | 'CODEX' | 'DECK_EDITOR';
+  status: 'START' | 'PLAYING' | 'VICTORY' | 'DEFEAT' | 'DRAW' | 'CODEX' | 'DECK_EDITOR';
+  previousStatus: 'START' | 'PLAYING' | 'VICTORY' | 'DEFEAT' | 'DRAW' | 'CODEX' | 'DECK_EDITOR';
   difficulty: number;
   commanderAbilityCooldown: number; // Enfriamiento de la habilidad especial
   aiCommanderAbilityCooldown: number;
