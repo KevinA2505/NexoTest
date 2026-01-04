@@ -410,9 +410,10 @@ const App: React.FC = () => {
   const currentMothershipCooldown = Math.ceil(getMothershipCooldownMs() / 1000);
   const currentMothershipPayloadInterval = Math.ceil(getMothershipPayloadIntervalMs(selectedHangarCard?.cost) / 1000);
   const abilityEditingLocked = gameState.status === 'PLAYING';
+  const isDeckEditorOpen = gameState.status === 'DECK_EDITOR';
 
   return (
-    <div className="min-h-screen flex bg-[#010101] overflow-hidden select-none font-mono text-white">
+    <div className={`min-h-screen flex bg-[#010101] overflow-hidden select-none font-mono text-white ${isDeckEditorOpen ? 'app-overlay-locked' : ''}`}>
       <div className="w-48 h-screen bg-[#050505] border-r border-[#1a3a5a] flex flex-col p-4 shadow-[5px_0_30px_rgba(0,0,0,0.5)] z-30 overflow-y-auto scrollbar-hide">
         <div className="mb-6 flex flex-col items-center">
             <div className="text-[10px] text-[#00ccff] font-bold uppercase tracking-[0.2em] mb-1">Command Deck</div>
