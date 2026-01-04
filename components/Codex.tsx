@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Card, UnitType, Faction, TargetPreference, AlienSubtype } from '../types';
-import { CARD_LIBRARY } from '../constants';
+import { PLAYABLE_CARD_LIBRARY } from '../constants';
 
 interface CodexProps {
   onClose: () => void;
@@ -32,9 +32,9 @@ const Codex: React.FC<CodexProps> = ({ onClose }) => {
 
   const sortedCards = useMemo(() => {
     const option = SORTING_OPTIONS.find((o) => o.value === sortKey);
-    if (!option?.predicate) return CARD_LIBRARY;
+    if (!option?.predicate) return PLAYABLE_CARD_LIBRARY;
 
-    const withIndex = CARD_LIBRARY.map((card, idx) => ({ card, idx }));
+    const withIndex = PLAYABLE_CARD_LIBRARY.map((card, idx) => ({ card, idx }));
     return withIndex
       .sort((a, b) => {
         const score = (entry: { card: Card }) => (option.predicate?.(entry.card) ? 0 : 1);

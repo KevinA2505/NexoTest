@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CARD_LIBRARY, EMP_ABILITY_BALANCE, SPECIAL_ABILITIES, findAbilityById } from '../constants';
+import { EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
@@ -27,18 +27,18 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
   };
 
   const avgCost = selection.length > 0 
-    ? (selection.reduce((acc, id) => acc + (CARD_LIBRARY.find(c => c.id === id)?.cost || 0), 0) / selection.length).toFixed(1)
+    ? (selection.reduce((acc, id) => acc + (PLAYABLE_CARD_LIBRARY.find(c => c.id === id)?.cost || 0), 0) / selection.length).toFixed(1)
     : 0;
 
   const typeCounts = selection.reduce((acc, id) => {
-    const type = CARD_LIBRARY.find(c => c.id === id)?.type;
+    const type = PLAYABLE_CARD_LIBRARY.find(c => c.id === id)?.type;
     if (type) acc[type] = (acc[type] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const ability = findAbilityById(selectedAbility.id) || SPECIAL_ABILITIES[0];
   const hangarCardId = selectedAbility.configuration.hangarUnit as string;
-  const hangarCard = CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
+  const hangarCard = PLAYABLE_CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
   const displayedAbilityCooldown = ability.id === 'mothership_command'
     ? Math.ceil(getMothershipCooldownMs() / 1000)
     : ability.cooldown;
@@ -48,7 +48,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
       return `${mode.label} · ${mode.stunDuration / 1000}s + ${mode.damage} dmg · Radio ${EMP_ABILITY_BALANCE.radius}`;
     }
     if (ability.id === 'mothership_command' && key === 'hangarUnit') {
-      const card = CARD_LIBRARY.find(c => c.id === value);
+      const card = PLAYABLE_CARD_LIBRARY.find(c => c.id === value);
       if (!card) return 'Pendiente';
       const cooldown = Math.ceil(getMothershipCooldownMs() / 1000);
       const payloadInterval = Math.ceil(getMothershipPayloadIntervalMs(card.cost) / 1000);
@@ -139,7 +139,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
 
           {/* Card Grid */}
           <div className="lg:col-span-3 overflow-y-auto max-h-[75vh] pr-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {CARD_LIBRARY.map(card => {
+            {PLAYABLE_CARD_LIBRARY.map(card => {
               const isSelected = selection.includes(card.id);
               return (
                 <div 

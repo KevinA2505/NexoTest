@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction } from './types';
-import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE } from './constants';
+import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
@@ -17,6 +17,11 @@ const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
   const configuration = createDefaultAbilityConfig(ability);
 
   ability.options.forEach(option => {
+    if (option.lockDefault && option.defaultValue !== undefined) {
+      configuration[option.key] = option.defaultValue;
+      return;
+    }
+
     if (option.type === 'select' && option.choices?.length) {
       const choice = option.choices[Math.floor(Math.random() * option.choices.length)];
       configuration[option.key] = choice.value;
@@ -360,7 +365,7 @@ const App: React.FC = () => {
     aiController.reset();
     
     const playerDeckPool = [...gameState.playerSelection].sort(() => 0.5 - Math.random());
-    const fullPool = CARD_LIBRARY.map(c => c.id);
+    const fullPool = PLAYABLE_CARD_LIBRARY.map(c => c.id);
     const aiDeckPool = [...fullPool].sort(() => 0.5 - Math.random()).slice(0, 8);
 
     setGameState(prev => ({
@@ -409,7 +414,7 @@ const App: React.FC = () => {
   const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
   const abilityCost = activeAbility.cost;
   const selectedHangarCardId = specialAbility.configuration.hangarUnit as string | undefined;
-  const selectedHangarCard = CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
+  const selectedHangarCard = PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
   const playerHasMothership = gameState.units.some(u => u.team === Team.PLAYER && u.isMothership && !u.isDead);
   const abilityReady = gameState.playerEnergy >= abilityCost
     && gameState.commanderAbilityCooldown <= 0
@@ -516,7 +521,7 @@ const App: React.FC = () => {
                     ? `${currentEmpMode.stunDuration / 1000}s + ${currentEmpMode.damage || '0'} daño en radio ${EMP_ABILITY_BALANCE.radius}`
                     : activeAbility.id === 'mothership_command'
                       ? `Nave con ${selectedHangarCard ? selectedHangarCard.name : 'carga pendiente'} · CD fijo ${currentMothershipCooldown}s · Genera carga cada ${currentMothershipPayloadInterval}s`
-                      : 'Aturde enemigos globales'}
+                      : activeAbility.description}
                 </p>
             </div>
         )}
