@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Card, UnitType, Faction, TargetPreference, AlienSubtype } from '../types';
+import { Card, UnitType, Faction, TargetPreference, AlienSubtype, ProjectileStyle } from '../types';
 import { CARD_LIBRARY } from '../constants';
 
 interface CodexProps {
@@ -12,6 +12,40 @@ interface SortingOption {
   label: string;
   predicate?: (card: Card) => boolean;
 }
+
+const TYPE_LABELS: Record<UnitType, string> = {
+  [UnitType.AIR]: 'Aéreo',
+  [UnitType.GROUND]: 'Terrestre',
+  [UnitType.SPELL]: 'Hechizo',
+  [UnitType.BUILDING]: 'Edificio'
+};
+
+const TARGET_LABELS: Record<TargetPreference, string> = {
+  [TargetPreference.ANY]: 'Versátil',
+  [TargetPreference.TOWERS]: 'Asedio/Torres',
+  [TargetPreference.AIR]: 'Anti-aéreo',
+  [TargetPreference.ALLIES]: 'Soporte/Aliados'
+};
+
+const FACTION_LABELS: Record<Faction, string> = {
+  [Faction.HUMAN]: 'Humanos',
+  [Faction.ANDROID]: 'Androides',
+  [Faction.ALIEN]: 'Alien'
+};
+
+const ALIEN_SUBTYPE_LABELS: Record<AlienSubtype, string> = {
+  [AlienSubtype.HUMANOID]: 'Humanoide',
+  [AlienSubtype.ARACNID]: 'Arácnido',
+  [AlienSubtype.SLIMOID]: 'Slimoide'
+};
+
+const PROJECTILE_LABELS: Record<ProjectileStyle, string> = {
+  laser: 'Láser',
+  plasma: 'Plasma',
+  missile: 'Misil',
+  beam: 'Rayo',
+  none: 'Instantáneo'
+};
 
 const SORTING_OPTIONS: SortingOption[] = [
   { value: 'default', label: 'Default · Orden original' },
@@ -73,52 +107,142 @@ const Codex: React.FC<CodexProps> = ({ onClose }) => {
       </div>
 
       <div className="w-full max-w-6xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto pr-4 scrollbar-hide">
-        {sortedCards.map(card => (
-          <div key={card.id} className="bg-[#0a0a0a] border border-[#1a3a5a] p-6 rounded-lg flex flex-col gap-4 group hover:border-[#00ccff] transition-all duration-300">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-xl font-bold text-white group-hover:text-[#00ccff] transition-colors">{card.name}</h3>
-                <span className="text-[10px] text-[#00ccff] uppercase tracking-widest">{card.type}</span>
-              </div>
-              <div className="bg-[#00ccff] text-black px-3 py-1 font-black rounded-sm">{card.cost}⚡</div>
-            </div>
+        {sortedCards.map(card => {
+          const isHealing = card.damage < 0;
+          const isSpell = card.type === UnitType.SPELL;
+          const attacksPerSecond = card.attackSpeed > 0 ? 1000 / card.attackSpeed : 0;
+          const dps = Math.abs(card.damage) * attacksPerSecond;
 
-            <div className="h-24 flex items-center justify-center bg-black/50 border border-white/5 relative overflow-hidden">
-              {/* Visual representation in Codex */}
-              <div 
-                className="w-12 h-12 border-2 flex items-center justify-center"
-                style={{ borderColor: card.color, boxShadow: `0 0 15px ${card.color}` }}
-              >
-                 <div className="w-4 h-4" style={{ backgroundColor: card.color }}></div>
-              </div>
-              <div className="absolute inset-0 bg-gradient-to-t from-[#00ccff]/5 to-transparent"></div>
-            </div>
+          return (
+            <div
+              key={card.id}
+              className="relative overflow-hidden rounded-xl border border-white/10 p-6 flex flex-col gap-5 group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_15px_60px_rgba(0,0,0,0.45)]"
+              style={{
+                background: `linear-gradient(145deg, ${card.color}14, #0c1020 30%, #06070f)`,
+                boxShadow: `0 0 25px ${card.color}26`
+              }}
+            >
+              <div
+                className="absolute inset-0 pointer-events-none opacity-60 group-hover:opacity-80 transition"
+                style={{
+                  background: `radial-gradient(120% 80% at 20% 20%, ${card.color}24 0%, transparent 60%), radial-gradient(80% 60% at 80% 10%, ${card.color}18 0%, transparent 50%)`
+                }}
+              />
 
-            <div className="grid grid-cols-2 gap-y-2 text-[11px] uppercase text-white/70">
-              <div className="flex flex-col">
-                <span className="text-white/40 text-[9px]">Vida</span>
-                <span className="font-bold text-white">{card.hp}</span>
+              <div className="flex justify-between items-start relative z-10">
+                <div className="flex-1 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/70">
+                    <span className="px-2 py-1 rounded-full border border-white/10 bg-white/5">{FACTION_LABELS[card.faction]}</span>
+                    {card.faction === Faction.ALIEN && card.alienSubtype && (
+                      <span className="px-2 py-1 rounded-full border border-white/10 bg-white/5 text-[#9efcff]">{ALIEN_SUBTYPE_LABELS[card.alienSubtype]}</span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-white drop-shadow-sm leading-tight group-hover:text-[#b0f2ff]">{card.name}</h3>
+                    <p className="text-[11px] text-white/60 uppercase tracking-[0.25em]">Codex #{card.id}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-[11px] uppercase">
+                    <span
+                      className="px-3 py-1 rounded-full bg-white/10 border border-white/10 font-bold tracking-wide shadow-sm"
+                      style={{ boxShadow: `0 0 0 1px ${card.color}40` }}
+                    >
+                      {TYPE_LABELS[card.type]}
+                    </span>
+                    <span className="px-3 py-1 rounded-full bg-[#0c1b2a] border border-[#00ccff]/40 text-[#a3e8ff] font-semibold tracking-wide">
+                      Rol: {TARGET_LABELS[card.targetPref]}
+                    </span>
+                    {card.splitOnDeath && (
+                      <span className="px-3 py-1 rounded-full bg-[#ffe57f14] border border-amber-300/50 text-amber-200 font-semibold">Divide al morir</span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <div className="px-4 py-2 rounded-lg text-lg font-black text-black shadow-inner"
+                    style={{ background: `linear-gradient(135deg, ${card.color}, #ffffff)` }}
+                  >
+                    {card.cost} ⚡
+                  </div>
+                  <div className="text-[10px] text-white/60 uppercase tracking-[0.2em]">Energía</div>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-white/40 text-[9px]">Daño</span>
-                <span className="font-bold text-white">{Math.abs(card.damage)} {card.damage < 0 ? '(Cura)' : ''}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-white/40 text-[9px]">Alcance</span>
-                <span className="font-bold text-white">{card.range}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-white/40 text-[9px]">Cadencia</span>
-                <span className="font-bold text-white">{(1000/card.attackSpeed).toFixed(1)}/s</span>
-              </div>
-            </div>
 
-            <div className="border-t border-white/5 pt-4">
-              <p className="text-xs text-white/80 italic mb-2 leading-relaxed">"{card.flavor}"</p>
-              <p className="text-[10px] text-[#00ccff] font-bold uppercase">{card.description}</p>
+              <div className="h-28 flex items-center justify-between gap-4 relative z-10">
+                <div className="flex-1 h-full rounded-lg border border-white/5 bg-black/40 backdrop-blur-sm overflow-hidden relative">
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      background: `linear-gradient(120deg, ${card.color}22 0%, transparent 60%)`
+                    }}
+                  />
+                  <div className="absolute -right-6 -bottom-10 w-32 h-32 rounded-full blur-3xl" style={{ backgroundColor: `${card.color}33` }} />
+                  <div className="flex items-center justify-center h-full relative">
+                    <div
+                      className="w-14 h-14 rounded-xl border-2 flex items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+                      style={{ borderColor: card.color, boxShadow: `0 0 20px ${card.color}70, inset 0 0 12px ${card.color}40` }}
+                    >
+                      <div className="w-6 h-6 rounded-md" style={{ background: `linear-gradient(135deg, ${card.color}, #ffffff)` }} />
+                    </div>
+                    <div className="absolute top-2 right-2 text-[10px] uppercase text-white/60 tracking-wider">Visión táctica</div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 text-[11px] text-white/70">
+                  <div className="px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-inner">
+                    <div className="text-[10px] uppercase text-white/50">Proyecto</div>
+                    <div className="font-semibold text-white">{PROJECTILE_LABELS[card.projectileType]}</div>
+                  </div>
+                  {isSpell && (
+                    <div className="px-3 py-2 rounded-lg bg-[#162032] border border-[#54d0ff]/40 shadow-inner">
+                      <div className="text-[10px] uppercase text-[#9be7ff]">Hechizo</div>
+                      <div className="font-semibold text-white">{card.isAoE ? `AOE ${card.aoeRadius || 0}m` : 'Efecto puntual'}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-[11px] uppercase relative z-10">
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">Vida</span>
+                  <span className="text-lg font-bold text-white">{card.hp}</span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg border shadow-sm" style={{ borderColor: isHealing ? '#4ade8088' : '#ffffff1a', background: isHealing ? '#1a3a2622' : 'rgba(255,255,255,0.04)' }}>
+                  <span className="text-white/40 text-[10px] tracking-widest">{isHealing ? 'Curación' : 'Daño'}</span>
+                  <span className={`text-lg font-bold ${isHealing ? 'text-emerald-300' : 'text-white'}`}>
+                    {Math.abs(card.damage)}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">DPS</span>
+                  <span className="text-lg font-bold text-white">{dps.toFixed(1)}</span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">Alcance</span>
+                  <span className="text-lg font-bold text-white">{card.range}</span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">Velocidad</span>
+                  <span className="text-lg font-bold text-white">{card.speed.toFixed(1)}</span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">Cadencia</span>
+                  <span className="text-lg font-bold text-white">{attacksPerSecond.toFixed(1)}/s</span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">Radio AOE</span>
+                  <span className="text-lg font-bold text-white">{card.isAoE ? `${card.aoeRadius || 0}m` : '—'}</span>
+                </div>
+                <div className="flex flex-col gap-1 px-3 py-2 rounded-lg bg-white/5 border border-white/10 shadow-sm">
+                  <span className="text-white/40 text-[10px] tracking-widest">Coste</span>
+                  <span className="text-lg font-bold text-white">{card.cost}⚡</span>
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 pt-4 relative z-10">
+                <p className="text-sm text-white/80 italic mb-2 leading-relaxed">"{card.flavor}"</p>
+                <p className="text-[11px] text-[#9be7ff] font-semibold uppercase tracking-wide">{card.description}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
