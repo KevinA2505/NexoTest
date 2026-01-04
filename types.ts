@@ -38,6 +38,8 @@ export enum TowerType {
 
 export type ProjectileStyle = 'laser' | 'plasma' | 'missile' | 'beam' | 'none';
 export type ArenaState = 'normal' | 'overtime_glitch';
+export type VisualFamily = 'humano' | 'ciber' | 'organico';
+export type SpellShape = 'concentric' | 'runes' | 'portal';
 
 export interface Card {
   id: string;
@@ -46,6 +48,8 @@ export interface Card {
   type: UnitType;
   faction: Faction;
   alienSubtype?: AlienSubtype;
+  visualFamily: VisualFamily;
+  spellShape?: SpellShape;
   splitOnDeath?: boolean;
   spawnChild?: string;
   hp: number;
@@ -72,6 +76,9 @@ export interface GameUnit {
   faction: Faction;
   team: Team;
   type: UnitType;
+  visualFamily: VisualFamily;
+  spellShape?: SpellShape;
+  alienSubtype?: AlienSubtype;
   x: number;
   y: number;
   hp: number;
