@@ -11,21 +11,28 @@ const nearestBridgeCenter = (y: number) => BRIDGE_CENTERS.reduce((closest, curre
   return Math.abs(current - y) < Math.abs(closest - y) ? current : closest;
 });
 
+const registerDamage = (state: GameState, team: Team, amount: number) => {
+  if (amount <= 0) return;
+  state.damageTaken[team] = (state.damageTaken[team] || 0) + amount;
+};
+
 export const updateGame = (state: GameState, deltaTime: number): GameState => {
-  const newState = { ...state };
+  const newState: GameState = { ...state, damageTaken: { ...state.damageTaken } };
   const previousElapsedSeconds = state.time / 1000;
-  const previousTimeRemaining = Math.max(0, GAME_DURATION - previousElapsedSeconds);
+  const previousTotalDuration = GAME_DURATION + (state.suddenDeathActive ? state.suddenDeathTimeExtensionMs / 1000 : 0);
+  const previousTimeRemaining = Math.max(0, previousTotalDuration - previousElapsedSeconds);
   
   newState.time += deltaTime;
   const elapsedSeconds = newState.time / 1000;
-  const timeRemaining = Math.max(0, GAME_DURATION - elapsedSeconds);
+  const totalDuration = GAME_DURATION + (newState.suddenDeathActive ? newState.suddenDeathTimeExtensionMs / 1000 : 0);
+  const timeRemaining = Math.max(0, totalDuration - elapsedSeconds);
 
   const isOvertime = timeRemaining <= 60;
   const wasOvertime = previousTimeRemaining <= 60;
   const multiplier = isOvertime ? 2 : 1;
   const currentEnergyRate = BASE_ENERGY_GAIN_RATE * multiplier;
 
-  if (!wasOvertime && isOvertime && newState.arenaState !== 'overtime_glitch') {
+  if (!wasOvertime && isOvertime && newState.arenaState === 'normal') {
     newState.arenaState = 'overtime_glitch';
     newState.arenaStateSince = newState.time;
     // Futuras variaciones de arena (clima/bioma) deberían activar aquí nuevos estados visuales sin tocar la lógica de unidades.
@@ -44,22 +51,25 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
   const timerJustExpired = previousTimeRemaining > 0 && timeRemaining <= 0;
   if (timerJustExpired && newState.status === 'PLAYING') {
-    const playerDestroyedEnemyTowers = newState.towers.filter(t => t.team === Team.AI && t.isDead).length;
-    const aiDestroyedEnemyTowers = newState.towers.filter(t => t.team === Team.PLAYER && t.isDead).length;
-
-    if (playerDestroyedEnemyTowers > aiDestroyedEnemyTowers) {
-      newState.status = 'VICTORY';
-    } else if (playerDestroyedEnemyTowers < aiDestroyedEnemyTowers) {
-      newState.status = 'DEFEAT';
+    if (newState.suddenDeathActive) {
+      const playerDamage = newState.damageTaken[Team.PLAYER] || 0;
+      const aiDamage = newState.damageTaken[Team.AI] || 0;
+      if (playerDamage < aiDamage) newState.status = 'VICTORY';
+      else if (playerDamage > aiDamage) newState.status = 'DEFEAT';
+      else newState.status = 'DRAW';
     } else {
-      const pKing = newState.towers.find(t => t.team === Team.PLAYER && t.type === TowerType.KING);
-      const aKing = newState.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);
-      if (pKing && aKing) {
-        if (pKing.hp > aKing.hp) newState.status = 'VICTORY';
-        else if (pKing.hp < aKing.hp) newState.status = 'DEFEAT';
-        else newState.status = 'DRAW';
+      const playerDestroyedEnemyTowers = newState.towers.filter(t => t.team === Team.AI && t.isDead).length;
+      const aiDestroyedEnemyTowers = newState.towers.filter(t => t.team === Team.PLAYER && t.isDead).length;
+  
+      if (playerDestroyedEnemyTowers > aiDestroyedEnemyTowers) {
+        newState.status = 'VICTORY';
+      } else if (playerDestroyedEnemyTowers < aiDestroyedEnemyTowers) {
+        newState.status = 'DEFEAT';
       } else {
-        newState.status = 'DRAW';
+        newState.suddenDeathActive = true;
+        newState.suddenDeathTimeExtensionMs = 60000;
+        newState.arenaState = 'sudden_death';
+        newState.arenaStateSince = newState.time;
       }
     }
   }
@@ -132,7 +142,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
               const maxHp = (t as GameUnit).maxHp ?? (t as Tower).maxHp ?? t.hp;
               t.hp = Math.min(maxHp, t.hp + Math.abs(card.damage));
             } else {
+              const prevHp = t.hp;
               t.hp -= card.damage;
+              registerDamage(newState, t.team, Math.min(card.damage, prevHp));
             }
           });
 
@@ -166,7 +178,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         );
         allies.forEach(a => {
           // daño negativo es curación
-          a.hp = Math.min(a.maxHp, a.hp - (card.damage / 5)); // Dividimos el daño total por los 5 ticks (1 por segundo aprox)
+          const prevHp = a.hp;
+          const nextHp = Math.max(0, Math.min(a.maxHp, a.hp - (card.damage / 5))); // Dividimos el daño total por los 5 ticks (1 por segundo aprox)
+          a.hp = nextHp;
+          const damageDelta = Math.max(0, prevHp - nextHp);
+          registerDamage(newState, a.team, damageDelta);
         });
       }
       as.nextTick = 1000; // Tick cada segundo
@@ -188,7 +204,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     }
 
     if (updatedUnit.decayPerMs) {
+      const prevHp = updatedUnit.hp;
       updatedUnit.hp -= updatedUnit.decayPerMs * deltaTime;
+      registerDamage(newState, updatedUnit.team, Math.max(0, prevHp - updatedUnit.hp));
     }
 
     if (updatedUnit.spawnIntervalMs && updatedUnit.spawnCardId) {
@@ -230,7 +248,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     }
     if (updatedUnit.dotTimer > 0) {
       updatedUnit.dotTimer -= deltaTime;
+      const prevHp = updatedUnit.hp;
       updatedUnit.hp -= 0.12 * (deltaTime / 16); 
+      registerDamage(newState, updatedUnit.team, Math.max(0, prevHp - updatedUnit.hp));
     }
 
     if (updatedUnit.isMothership && updatedUnit.payloadCardId) {
@@ -403,7 +423,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     if (updatedTower.hp <= 0) {
       updatedTower.isDead = true;
       newState.effects.push({ id: Math.random().toString(), x: updatedTower.x, y: updatedTower.y, type: 'explosion', timer: 1200, maxTimer: 1200, color: '#ffcc00' });
-      if (updatedTower.type === TowerType.KING) {
+      if (newState.arenaState === 'sudden_death' && newState.status === 'PLAYING') {
+        newState.status = tower.team === Team.PLAYER ? 'DEFEAT' : 'VICTORY';
+      } else if (updatedTower.type === TowerType.KING) {
         newState.status = tower.team === Team.PLAYER ? 'DEFEAT' : 'VICTORY';
       }
     }
@@ -434,10 +456,12 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           });
         }
       } else {
-        target.hp -= p.damage;
         if (p.onHitEffect === 'poison' && isTargetUnit && p.onHitDotDurationMs) {
           target.dotTimer = Math.max(target.dotTimer, p.onHitDotDurationMs);
         }
+        const prevHp = target.hp;
+        target.hp -= p.damage;
+        registerDamage(newState, target.team, Math.min(p.damage, prevHp));
         newState.effects.push({
           id: Math.random().toString(),
           x: target.x, y: target.y,
@@ -546,13 +570,19 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
         if (t.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return false;
         return Math.hypot(t.x - target.x, t.y - target.y) <= attacker.aoeRadius;
     });
-    targets.forEach(t => t.hp -= attacker.damage);
+    targets.forEach(t => {
+      const prevHp = t.hp;
+      t.hp -= attacker.damage;
+      if (attacker.damage > 0) registerDamage(state, t.team, Math.min(attacker.damage, prevHp));
+    });
   } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
     if (attacker.damage < 0) {
       actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + Math.abs(attacker.damage));
       state.effects.push({ id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa' });
     } else {
+      const prevHp = actualTarget.hp;
       actualTarget.hp -= attacker.damage;
+      registerDamage(state, actualTarget.team, Math.min(attacker.damage, prevHp));
     }
   }
 
