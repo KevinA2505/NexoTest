@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { Card, UnitType, Faction, TargetPreference } from '../types';
+import { Card, UnitType, Faction, TargetPreference, AlienSubtype } from '../types';
 import { CARD_LIBRARY } from '../constants';
 
 interface CodexProps {
@@ -17,10 +17,14 @@ const SORTING_OPTIONS: SortingOption[] = [
   { value: 'default', label: 'Default · Orden original' },
   { value: 'type_air', label: 'Tipo: Aéreo', predicate: (card) => card.type === UnitType.AIR },
   { value: 'type_ground', label: 'Tipo: Terrestre', predicate: (card) => card.type === UnitType.GROUND },
+  { value: 'type_spell', label: 'Carta: Hechizo', predicate: (card) => card.type === UnitType.SPELL },
   { value: 'role_anti_air', label: 'Rol: Anti-aéreo', predicate: (card) => card.targetPref === TargetPreference.AIR },
   { value: 'faction_human', label: 'Facción: Humanos', predicate: (card) => card.faction === Faction.HUMAN },
   { value: 'faction_android', label: 'Facción: Androides', predicate: (card) => card.faction === Faction.ANDROID },
   { value: 'faction_alien', label: 'Facción: Alien', predicate: (card) => card.faction === Faction.ALIEN },
+  { value: 'alien_humanoid', label: 'Subtipo Alien: Humanoide', predicate: (card) => card.faction === Faction.ALIEN && card.alienSubtype === AlienSubtype.HUMANOID },
+  { value: 'alien_arachnid', label: 'Subtipo Alien: Arácnido', predicate: (card) => card.faction === Faction.ALIEN && card.alienSubtype === AlienSubtype.ARACNID },
+  { value: 'alien_slimoid', label: 'Subtipo Alien: Slimoide', predicate: (card) => card.faction === Faction.ALIEN && card.alienSubtype === AlienSubtype.SLIMOID },
 ];
 
 const Codex: React.FC<CodexProps> = ({ onClose }) => {
