@@ -92,11 +92,14 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
               </span>
             </div>
             <div className="flex flex-wrap gap-1 text-[9px] text-white/50">
-              {Object.entries(selectedAbility.configuration).map(([key, value]) => (
-                <span key={key} className="px-2 py-1 bg-white/5 rounded border border-white/10 capitalize">
-                  {key}: <strong className="text-[#00ccff]">{renderAbilityConfigValue(key, value)}</strong>
-                </span>
-              ))}
+              {Object.entries(selectedAbility.configuration).map(([key, value]) => {
+                const normalizedValue = value as string | number | boolean;
+                return (
+                  <span key={key} className="px-2 py-1 bg-white/5 rounded border border-white/10 capitalize">
+                    {key}: <strong className="text-[#00ccff]">{renderAbilityConfigValue(key, normalizedValue)}</strong>
+                  </span>
+                );
+              })}
             </div>
             <button
               onClick={onOpenAbilityModal}
