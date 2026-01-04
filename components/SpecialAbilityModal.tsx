@@ -3,6 +3,8 @@ import { CARD_LIBRARY, EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, S
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
+import OverlayPortal from './OverlayPortal';
+import './overlays.css';
 
 interface SpecialAbilityModalProps {
   initialSelection: SelectedSpecialAbility;
@@ -134,143 +136,145 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   };
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-[200] p-4 md:p-8 flex items-start justify-center overflow-y-auto">
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-[#050505] border border-[#1a3a5a] rounded p-4 flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-white/5 pb-3">
-            <div>
-              <h3 className="text-lg font-black text-[#00ccff] uppercase tracking-widest">Habilidad Especial</h3>
-              <p className="text-[10px] text-white/50 uppercase">Selecciona el protocolo de mando</p>
+    <OverlayPortal>
+      <div className="overlay-shell overlay-shell--modal p-4 md:p-8 flex items-start justify-center">
+        <div className="overlay-content grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 bg-[#050505] border border-[#1a3a5a] rounded p-4 flex flex-col gap-3">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-[#00ccff] uppercase tracking-widest">Habilidad Especial</h3>
+                <p className="text-[10px] text-white/50 uppercase">Selecciona el protocolo de mando</p>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-[10px] px-3 py-1 border border-white/20 text-white/60 hover:text-white hover:border-white/50 transition rounded"
+              >
+                Cerrar
+              </button>
             </div>
-            <button
-              onClick={onClose}
-              className="text-[10px] px-3 py-1 border border-white/20 text-white/60 hover:text-white hover:border-white/50 transition rounded"
-            >
-              Cerrar
-            </button>
+
+            <div className="flex flex-col gap-3">
+              {SPECIAL_ABILITIES.map(ability => {
+                const active = ability.id === selectedAbility.id;
+                const hangarOption = ability.options.find(o => o.key === 'hangarUnit');
+                const abilityHangarCardId = (configurations[ability.id]?.hangarUnit as string) || (hangarOption?.defaultValue as string);
+                const abilityHangarCard = CARD_LIBRARY.find(c => c.id === abilityHangarCardId && c.type !== UnitType.SPELL);
+                const cooldownLabel = ability.id === 'mothership_command'
+                  ? `${Math.ceil(getMothershipCooldownMs() / 1000)}s CD`
+                  : `${ability.cooldown}s CD`;
+                return (
+                  <button
+                    key={ability.id}
+                    onClick={() => setSelectedId(ability.id)}
+                    className={`p-3 border rounded text-left transition flex flex-col gap-1 ${
+                      active
+                        ? 'border-[#00ccff] bg-[#00ccff]/10 shadow-[0_0_10px_rgba(0,204,255,0.2)]'
+                        : 'border-white/10 hover:border-white/30 bg-black/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-white">{ability.name}</span>
+                      <span className="text-[10px] px-2 py-1 border border-[#00ccff]/40 text-[#00ccff] rounded uppercase">
+                        {ability.badge || 'Core'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/60 leading-snug">{ability.description}</p>
+                    <div className="text-[10px] text-white/50 uppercase flex gap-3 mt-1">
+                      <span>{ability.cost}⚡ costo</span>
+                      <span>{cooldownLabel}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            {SPECIAL_ABILITIES.map(ability => {
-              const active = ability.id === selectedAbility.id;
-              const hangarOption = ability.options.find(o => o.key === 'hangarUnit');
-              const abilityHangarCardId = (configurations[ability.id]?.hangarUnit as string) || (hangarOption?.defaultValue as string);
-              const abilityHangarCard = CARD_LIBRARY.find(c => c.id === abilityHangarCardId && c.type !== UnitType.SPELL);
-              const cooldownLabel = ability.id === 'mothership_command'
-                ? `${Math.ceil(getMothershipCooldownMs() / 1000)}s CD`
-                : `${ability.cooldown}s CD`;
-              return (
-                <button
-                  key={ability.id}
-                  onClick={() => setSelectedId(ability.id)}
-                  className={`p-3 border rounded text-left transition flex flex-col gap-1 ${
-                    active
-                      ? 'border-[#00ccff] bg-[#00ccff]/10 shadow-[0_0_10px_rgba(0,204,255,0.2)]'
-                      : 'border-white/10 hover:border-white/30 bg-black/40'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-white">{ability.name}</span>
-                    <span className="text-[10px] px-2 py-1 border border-[#00ccff]/40 text-[#00ccff] rounded uppercase">
-                      {ability.badge || 'Core'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-white/60 leading-snug">{ability.description}</p>
-                  <div className="text-[10px] text-white/50 uppercase flex gap-3 mt-1">
-                    <span>{ability.cost}⚡ costo</span>
-                    <span>{cooldownLabel}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="lg:col-span-2 bg-[#050505] border border-[#1a3a5a] rounded p-6 flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-white/5 pb-4">
-            <div>
-              <div className="text-[10px] text-white/50 uppercase tracking-widest">Configuración</div>
-              <h4 className="text-2xl font-black text-white">{selectedAbility.name}</h4>
-              <p className="text-[11px] text-white/60 max-w-2xl">{selectedAbility.description}</p>
-            </div>
+          <div className="lg:col-span-2 bg-[#050505] border border-[#1a3a5a] rounded p-6 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div>
+                <div className="text-[10px] text-white/50 uppercase tracking-widest">Configuración</div>
+                <h4 className="text-2xl font-black text-white">{selectedAbility.name}</h4>
+                <p className="text-[11px] text-white/60 max-w-2xl">{selectedAbility.description}</p>
+              </div>
               <div className="text-right">
                 <div className="text-[10px] text-white/50 uppercase">Coste</div>
                 <div className="text-[#00ccff] text-xl font-black">{selectedAbility.cost}⚡</div>
                 <div className="text-[10px] text-white/50 uppercase">Enfriamiento {displayedCooldown}s</div>
-              {selectedAbility.id === 'mothership_command' && (
-                <div className="text-[9px] text-[#00ccff] font-semibold">CD fijo 30s · Genera carga cada {mothershipPayloadSeconds}s</div>
-              )}
+                {selectedAbility.id === 'mothership_command' && (
+                  <div className="text-[9px] text-[#00ccff] font-semibold">CD fijo 30s · Genera carga cada {mothershipPayloadSeconds}s</div>
+                )}
               </div>
             </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            {selectedAbility.options.map(option => renderOption(option.key))}
-          </div>
-
-          {selectedAbility.id === 'emp_overwatch' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-              <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
-                <div className="text-[10px] uppercase text-white/50">Coste</div>
-                <div className="text-xl font-black text-[#00ccff]">{selectedAbility.cost}⚡</div>
-                <div className="text-[10px] uppercase text-white/50">Enfriamiento</div>
-                <div className="text-sm font-bold text-white">{selectedAbility.cooldown}s</div>
-              </div>
-              <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2">
-                <div className="text-[10px] uppercase text-white/50">Vista previa</div>
-                <div className="text-lg font-black text-white">{selectedEmpMode.label}</div>
-                <p className="text-[10px] text-white/60 uppercase tracking-wider">{selectedEmpMode.description}</p>
-                <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
-                  <span className="px-2 py-1 border border-white/10 rounded">Radio {EMP_ABILITY_BALANCE.radius}</span>
-                  <span className="px-2 py-1 border border-white/10 rounded">Aturdimiento {selectedEmpMode.stunDuration / 1000}s</span>
-                  <span className="px-2 py-1 border border-white/10 rounded">Daño {selectedEmpMode.damage}</span>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-3">
+              {selectedAbility.options.map(option => renderOption(option.key))}
             </div>
-          )}
-          {selectedAbility.id === 'mothership_command' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-              <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
-                <div className="text-[10px] uppercase text-white/50">Casco</div>
-                <div className="text-xl font-black text-[#00ccff]">{MOTHERSHIP_HP} HP</div>
-                <div className="text-[10px] uppercase text-white/50">Velocidad</div>
-                <div className="text-sm font-bold text-white">{MOTHERSHIP_BALANCE.speed.toFixed(2)} u/tick</div>
-                <div className="text-[10px] uppercase text-white/50">Colisión</div>
-                <div className="text-sm font-bold text-white">{MOTHERSHIP_BALANCE.collisionRadius}px radio</div>
-              </div>
-              <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2">
-                <div className="text-[10px] uppercase text-white/50">Carga de hangar</div>
-                <div className="text-lg font-black text-white">
-                  {selectedHangarCard ? selectedHangarCard.name : 'Selecciona una tropa'}
-                </div>
-                <p className="text-[10px] text-white/60 uppercase tracking-wider">
-                  {selectedHangarCard ? `Despliega ${selectedHangarCard.count || 1}x ${selectedHangarCard.name} junto a la nave.` : 'Solo admite tropas (sin hechizos).'}
-                </p>
-                <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
-                  <span className="px-2 py-1 border border-white/10 rounded">Coste habilidad {MOTHERSHIP_BALANCE.cost}⚡</span>
-                  <span className="px-2 py-1 border border-white/10 rounded">CD fijo {mothershipCooldownSeconds}s</span>
-                  <span className="px-2 py-1 border border-white/10 rounded">Genera carga cada {mothershipPayloadSeconds}s</span>
-                </div>
-              </div>
-            </div>
-          )}
 
-          <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-[11px] uppercase tracking-widest border border-white/20 text-white/60 hover:text-white hover:border-white/50 transition rounded"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => onConfirm({ id: selectedAbility.id, configuration: currentConfig })}
-              className="px-5 py-2 text-[11px] uppercase tracking-widest border border-[#00ccff] text-[#00ccff] hover:bg-[#00ccff] hover:text-black transition rounded font-bold"
-            >
-              Confirmar selección
-            </button>
+            {selectedAbility.id === 'emp_overwatch' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
+                  <div className="text-[10px] uppercase text-white/50">Coste</div>
+                  <div className="text-xl font-black text-[#00ccff]">{selectedAbility.cost}⚡</div>
+                  <div className="text-[10px] uppercase text-white/50">Enfriamiento</div>
+                  <div className="text-sm font-bold text-white">{selectedAbility.cooldown}s</div>
+                </div>
+                <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2">
+                  <div className="text-[10px] uppercase text-white/50">Vista previa</div>
+                  <div className="text-lg font-black text-white">{selectedEmpMode.label}</div>
+                  <p className="text-[10px] text-white/60 uppercase tracking-wider">{selectedEmpMode.description}</p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                    <span className="px-2 py-1 border border-white/10 rounded">Radio {EMP_ABILITY_BALANCE.radius}</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">Aturdimiento {selectedEmpMode.stunDuration / 1000}s</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">Daño {selectedEmpMode.damage}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {selectedAbility.id === 'mothership_command' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
+                  <div className="text-[10px] uppercase text-white/50">Casco</div>
+                  <div className="text-xl font-black text-[#00ccff]">{MOTHERSHIP_HP} HP</div>
+                  <div className="text-[10px] uppercase text-white/50">Velocidad</div>
+                  <div className="text-sm font-bold text-white">{MOTHERSHIP_BALANCE.speed.toFixed(2)} u/tick</div>
+                  <div className="text-[10px] uppercase text-white/50">Colisión</div>
+                  <div className="text-sm font-bold text-white">{MOTHERSHIP_BALANCE.collisionRadius}px radio</div>
+                </div>
+                <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2">
+                  <div className="text-[10px] uppercase text-white/50">Carga de hangar</div>
+                  <div className="text-lg font-black text-white">
+                    {selectedHangarCard ? selectedHangarCard.name : 'Selecciona una tropa'}
+                  </div>
+                  <p className="text-[10px] text-white/60 uppercase tracking-wider">
+                    {selectedHangarCard ? `Despliega ${selectedHangarCard.count || 1}x ${selectedHangarCard.name} junto a la nave.` : 'Solo admite tropas (sin hechizos).'}
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                    <span className="px-2 py-1 border border-white/10 rounded">Coste habilidad {MOTHERSHIP_BALANCE.cost}⚡</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">CD fijo {mothershipCooldownSeconds}s</span>
+                    <span className="px-2 py-1 border border-white/10 rounded">Genera carga cada {mothershipPayloadSeconds}s</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2 border-t border-white/5">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-[11px] uppercase tracking-widest border border-white/20 text-white/60 hover:text-white hover:border-white/50 transition rounded"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => onConfirm({ id: selectedAbility.id, configuration: currentConfig })}
+                className="px-5 py-2 text-[11px] uppercase tracking-widest border border-[#00ccff] text-[#00ccff] hover:bg-[#00ccff] hover:text-black transition rounded font-bold"
+              >
+                Confirmar selección
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </OverlayPortal>
   );
 };
 

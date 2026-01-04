@@ -1,0 +1,50 @@
+:root {
+  --overlay-z-index: 260;
+  --overlay-backdrop: rgba(0, 0, 0, 0.96);
+}
+
+.overlay-shell {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  padding: 1.5rem;
+  background: var(--overlay-backdrop);
+  z-index: var(--overlay-z-index);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.overlay-portal-node {
+  position: relative;
+  z-index: var(--overlay-z-index);
+}
+
+.overlay-shell--deck {
+  background: rgba(0, 0, 0, 0.98);
+}
+
+.overlay-shell--modal {
+  background: var(--overlay-backdrop);
+  z-index: calc(var(--overlay-z-index) + 5);
+}
+
+.overlay-shell .overlay-content {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.app-overlay-locked {
+  pointer-events: none;
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .overlay-shell {
+    padding: 1rem;
+  }
+}
