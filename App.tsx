@@ -48,7 +48,7 @@ const App: React.FC = () => {
   });
   const [isAbilityModalOpen, setIsAbilityModalOpen] = useState(false);
   const [gameState, setGameState] = useState<GameState>(() => {
-    const initialSelection = ['infantry', 'marines', 'guardian', 'fighter', 'nova_squad', 'iron_star_tank', 'tank', 'skyfire_radar', 'orbital_laser', 'healing_matrix'];
+    const initialSelection = ['infantry', 'marines', 'fighter', 'nova_squad', 'iron_star_tank', 'tank', 'orbital_laser', 'healing_matrix'];
     return {
       playerEnergy: 5,
       aiEnergy: 5,
