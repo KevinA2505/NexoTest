@@ -42,12 +42,25 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     newState.aiCommanderAbilityCooldown = Math.max(0, newState.aiCommanderAbilityCooldown - deltaTime);
   }
 
-  if (timeRemaining <= 0 && newState.status === 'PLAYING') {
-    const pKing = newState.towers.find(t => t.team === Team.PLAYER && t.type === TowerType.KING);
-    const aKing = newState.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);
-    if (pKing && aKing) {
+  const timerJustExpired = previousTimeRemaining > 0 && timeRemaining <= 0;
+  if (timerJustExpired && newState.status === 'PLAYING') {
+    const playerDestroyedEnemyTowers = newState.towers.filter(t => t.team === Team.AI && t.isDead).length;
+    const aiDestroyedEnemyTowers = newState.towers.filter(t => t.team === Team.PLAYER && t.isDead).length;
+
+    if (playerDestroyedEnemyTowers > aiDestroyedEnemyTowers) {
+      newState.status = 'VICTORY';
+    } else if (playerDestroyedEnemyTowers < aiDestroyedEnemyTowers) {
+      newState.status = 'DEFEAT';
+    } else {
+      const pKing = newState.towers.find(t => t.team === Team.PLAYER && t.type === TowerType.KING);
+      const aKing = newState.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);
+      if (pKing && aKing) {
         if (pKing.hp > aKing.hp) newState.status = 'VICTORY';
         else if (pKing.hp < aKing.hp) newState.status = 'DEFEAT';
+        else newState.status = 'DRAW';
+      } else {
+        newState.status = 'DRAW';
+      }
     }
   }
 

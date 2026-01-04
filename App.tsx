@@ -640,7 +640,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {(gameState.status === 'START' || gameState.status === 'VICTORY' || gameState.status === 'DEFEAT') && (
+      {(gameState.status === 'START' || gameState.status === 'VICTORY' || gameState.status === 'DEFEAT' || gameState.status === 'DRAW') && (
         <div className="fixed inset-0 bg-black/95 z-[200] flex flex-col items-center justify-center text-center p-10 border-[10px] border-[#1a3a5a]/20">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#1a3a5a33_0%,_transparent_70%)] opacity-50" />
           <h1 className="text-7xl font-black text-white mb-2 tracking-tighter relative">
