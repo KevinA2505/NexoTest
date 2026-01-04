@@ -13,14 +13,23 @@ const nearestBridgeCenter = (y: number) => BRIDGE_CENTERS.reduce((closest, curre
 
 export const updateGame = (state: GameState, deltaTime: number): GameState => {
   const newState = { ...state };
+  const previousElapsedSeconds = state.time / 1000;
+  const previousTimeRemaining = Math.max(0, GAME_DURATION - previousElapsedSeconds);
   
   newState.time += deltaTime;
   const elapsedSeconds = newState.time / 1000;
   const timeRemaining = Math.max(0, GAME_DURATION - elapsedSeconds);
 
   const isOvertime = timeRemaining <= 60;
+  const wasOvertime = previousTimeRemaining <= 60;
   const multiplier = isOvertime ? 2 : 1;
   const currentEnergyRate = BASE_ENERGY_GAIN_RATE * multiplier;
+
+  if (!wasOvertime && isOvertime && newState.arenaState !== 'overtime_glitch') {
+    newState.arenaState = 'overtime_glitch';
+    newState.arenaStateSince = newState.time;
+    // Futuras variaciones de arena (clima/bioma) deberían activar aquí nuevos estados visuales sin tocar la lógica de unidades.
+  }
 
   newState.playerEnergy = Math.min(MAX_ENERGY, newState.playerEnergy + currentEnergyRate);
   newState.aiEnergy = Math.min(MAX_ENERGY, newState.aiEnergy + currentEnergyRate);
@@ -48,6 +57,24 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     ef.timer -= deltaTime;
     return ef.timer > 0;
   });
+
+  if (newState.arenaState === 'overtime_glitch') {
+    const glitchChance = Math.min(1, deltaTime / 180);
+    if (Math.random() < glitchChance) {
+      const duration = 120 + Math.random() * 220;
+      newState.effects.push({
+        id: 'glitch-' + Math.random(),
+        x: Math.random() * ARENA_WIDTH,
+        y: Math.random() * ARENA_HEIGHT,
+        type: 'glitch',
+        timer: duration,
+        maxTimer: duration,
+        color: '#ff3b30',
+        radius: 12 + Math.random() * 24
+      });
+    }
+    // Nuevos estados podrían generar sus propios efectos ambientales aquí sin alterar daño, colisiones ni energía.
+  }
 
   newState.pendingSpells = newState.pendingSpells.filter(ps => {
     ps.timer -= deltaTime;
