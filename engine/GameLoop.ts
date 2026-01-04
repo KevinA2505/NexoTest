@@ -174,6 +174,43 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
       updatedUnit.maxHp *= 1.2;
     }
 
+    if (updatedUnit.decayPerMs) {
+      updatedUnit.hp -= updatedUnit.decayPerMs * deltaTime;
+    }
+
+    if (updatedUnit.spawnIntervalMs && updatedUnit.spawnCardId) {
+      const lane = updatedUnit.lane ?? (updatedUnit.y < ARENA_HEIGHT / 2 ? 'TOP' : 'BOTTOM');
+      updatedUnit.spawnCountdownMs = (updatedUnit.spawnCountdownMs ?? updatedUnit.spawnIntervalMs) - deltaTime;
+
+      while (updatedUnit.spawnCountdownMs !== undefined && updatedUnit.spawnCountdownMs <= 0) {
+        for (let i = 0; i < (updatedUnit.spawnCount || 1); i++) {
+          const offsetX = (Math.random() - 0.5) * 40;
+          const offsetY = (Math.random() - 0.5) * 40;
+          const spawns = createUnitsFromCard(updatedUnit.spawnCardId, updatedUnit.team, lane, updatedUnit.x + offsetX, updatedUnit.y + offsetY).map(spawned => ({
+            ...spawned,
+            abilityInstanceId: updatedUnit.abilityInstanceId ?? spawned.abilityInstanceId,
+            spawnMode: updatedUnit.spawnMode ?? spawned.spawnMode,
+            onHitEffect: updatedUnit.spawnOnHitEffect ?? spawned.onHitEffect,
+            onHitDotDurationMs: updatedUnit.spawnOnHitDotDurationMs ?? spawned.onHitDotDurationMs,
+            damage: (updatedUnit.spawnOnHitEffect ?? spawned.onHitEffect) === 'heal' ? Math.abs(spawned.damage) : spawned.damage
+          }));
+          spawnedUnits.push(...spawns);
+        }
+
+        updatedUnit.spawnCountdownMs += updatedUnit.spawnIntervalMs;
+        newState.effects.push({
+          id: 'spawn-' + Math.random(),
+          x: updatedUnit.x, y: updatedUnit.y,
+          type: 'shockwave',
+          timer: 400,
+          maxTimer: 400,
+          color: updatedUnit.color,
+          radius: 120,
+          sourceFaction: updatedUnit.faction
+        });
+      }
+    }
+
     if (updatedUnit.stunTimer > 0) {
       updatedUnit.stunTimer -= deltaTime;
       return updatedUnit;
@@ -370,15 +407,39 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     p.y += Math.sin(angle) * p.speed * speedFactor;
 
     if (Math.hypot(target.x - p.x, target.y - p.y) < 12) {
-      target.hp -= p.damage;
-      newState.effects.push({
-        id: Math.random().toString(),
-        x: target.x, y: target.y,
-        type: 'spark', timer: 200, maxTimer: 200, color: p.color,
-        sourceFaction: p.faction,
-        sourceStyle: p.style,
-        variant: p.faction === Faction.ALIEN ? 'bio' : p.faction === Faction.ANDROID ? 'ionic' : 'ember'
-      });
+      const isTargetUnit = 'stunTimer' in target;
+      if (p.onHitEffect === 'heal') {
+        if (isTargetUnit && target.team === p.team) {
+          const healAmount = Math.abs(p.damage);
+          target.hp = Math.min(target.maxHp, target.hp + healAmount);
+          newState.effects.push({
+            id: Math.random().toString(),
+            x: target.x, y: target.y,
+            type: 'heal', timer: 200, maxTimer: 200, color: '#00ffaa',
+            sourceFaction: p.faction,
+            sourceStyle: p.style
+          });
+        }
+      } else {
+        target.hp -= p.damage;
+        if (p.onHitEffect === 'poison' && isTargetUnit && p.onHitDotDurationMs) {
+          target.dotTimer = Math.max(target.dotTimer, p.onHitDotDurationMs);
+        }
+        newState.effects.push({
+          id: Math.random().toString(),
+          x: target.x, y: target.y,
+          type: 'spark', timer: 200, maxTimer: 200, color: p.color,
+          sourceFaction: p.faction,
+          sourceStyle: p.style,
+          variant: p.faction === Faction.ALIEN ? 'bio' : p.faction === Faction.ANDROID ? 'ionic' : 'ember'
+        });
+      }
+
+      if (p.onHitEffect === 'poison' && p.sourceUnitId) {
+        const sourceUnit = newState.units.find(u => u.id === p.sourceUnitId);
+        if (sourceUnit && sourceUnit.spawnMode === 'kamikaze') sourceUnit.isDead = true;
+      }
+
       return false;
     }
     return true;
@@ -452,34 +513,53 @@ const findBestTarget = (unit: GameUnit, state: GameState): { x: number, y: numbe
 
 const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
   const actualTarget = state.units.find(u => u.id === target.id) || state.towers.find(t => t.id === target.id);
-  if (actualTarget) {
-     if (actualTarget.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return; 
+  if (!actualTarget) return;
+  if (actualTarget.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return;
 
-     if (attacker.isAoE && attacker.aoeRadius) {
-        const targets = [...state.units, ...state.towers].filter(t => {
-            if (t.isDead || t.team === attacker.team) return false;
-            if (t.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return false;
-            return Math.hypot(t.x - target.x, t.y - target.y) <= attacker.aoeRadius;
-        });
-        targets.forEach(t => t.hp -= attacker.damage);
-     } else {
-        if (attacker.damage < 0) {
-            actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + Math.abs(attacker.damage));
-            state.effects.push({ id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa' });
-        } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
-            actualTarget.hp -= attacker.damage;
-        }
-     }
+  const isTargetUnit = 'stunTimer' in actualTarget;
+
+  if (attacker.onHitEffect === 'heal') {
+    if (isTargetUnit && actualTarget.team === attacker.team) {
+      const healAmount = Math.abs(attacker.damage);
+      actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + healAmount);
+      state.effects.push({ id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa' });
+    }
+    return;
+  }
+
+  if (attacker.isAoE && attacker.aoeRadius) {
+    const targets = [...state.units, ...state.towers].filter(t => {
+        if (t.isDead || t.team === attacker.team) return false;
+        if (t.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return false;
+        return Math.hypot(t.x - target.x, t.y - target.y) <= attacker.aoeRadius;
+    });
+    targets.forEach(t => t.hp -= attacker.damage);
+  } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
+    if (attacker.damage < 0) {
+      actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + Math.abs(attacker.damage));
+      state.effects.push({ id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa' });
+    } else {
+      actualTarget.hp -= attacker.damage;
+    }
+  }
+
+  if (attacker.onHitEffect === 'poison' && isTargetUnit && attacker.onHitDotDurationMs) {
+    actualTarget.dotTimer = Math.max(actualTarget.dotTimer, attacker.onHitDotDurationMs);
+  }
+
+  if (attacker.onHitEffect === 'poison' && attacker.spawnMode === 'kamikaze') {
+    attacker.isDead = true;
   }
 };
 
 const spawnProjectile = (source: GameUnit | Tower, target: { x: number, y: number, id: string }, state: GameState, forcedStyle?: any) => {
   const isTower = 'cardId' in source === false;
   const baseStyle = forcedStyle || (isTower ? 'plasma' : (source as GameUnit).projectileType);
-  const cardId = !isTower ? (source as GameUnit).cardId : undefined;
-  const faction = isTower ? (source.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID) : (source as GameUnit).faction;
-  const color = isTower ? (source.team === Team.PLAYER ? '#00ccff' : '#ff3366') : (source as GameUnit).color;
-  const originUnitType = !isTower ? (source as GameUnit).type : undefined;
+  const sourceUnit = !isTower ? (source as GameUnit) : undefined;
+  const cardId = sourceUnit?.cardId;
+  const faction = isTower ? (source.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID) : sourceUnit?.faction;
+  const color = isTower ? (source.team === Team.PLAYER ? '#00ccff' : '#ff3366') : sourceUnit?.color || '#ffffff';
+  const originUnitType = sourceUnit?.type;
   const speed = baseStyle === 'missile' ? 4.4 : baseStyle === 'beam' ? 10 : 8.2;
 
   state.projectiles.push({
@@ -495,7 +575,11 @@ const spawnProjectile = (source: GameUnit | Tower, target: { x: number, y: numbe
     style: baseStyle,
     color,
     sourceCardId: cardId,
-    faction,
-    originUnitType
+    faction: faction!,
+    originUnitType,
+    onHitEffect: sourceUnit?.onHitEffect,
+    onHitDotDurationMs: sourceUnit?.onHitDotDurationMs,
+    sourceUnitId: sourceUnit?.id,
+    sourceAbilityInstanceId: sourceUnit?.abilityInstanceId
   });
 };
