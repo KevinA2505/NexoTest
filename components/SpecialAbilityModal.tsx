@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CARD_LIBRARY, EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
+import { EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
@@ -48,7 +48,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   const currentConfig = configurations[selectedAbility.id] || createDefaultAbilityConfig(selectedAbility);
   const selectedEmpMode = getEmpModeConfig(currentConfig.mode as string);
   const selectedHangarCardId = currentConfig.hangarUnit as string;
-  const selectedHangarCard = CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
+  const selectedHangarCard = PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
   const mothershipCooldownSeconds = Math.ceil(getMothershipCooldownMs() / 1000);
   const mothershipPayloadSeconds = Math.ceil(getMothershipPayloadIntervalMs(selectedHangarCard?.cost) / 1000);
   const displayedCooldown = selectedAbility.id === 'mothership_command' ? mothershipCooldownSeconds : selectedAbility.cooldown;
@@ -158,7 +158,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                 const active = ability.id === selectedAbility.id;
                 const hangarOption = ability.options.find(o => o.key === 'hangarUnit');
                 const abilityHangarCardId = (configurations[ability.id]?.hangarUnit as string) || (hangarOption?.defaultValue as string);
-                const abilityHangarCard = CARD_LIBRARY.find(c => c.id === abilityHangarCardId && c.type !== UnitType.SPELL);
+                const abilityHangarCard = PLAYABLE_CARD_LIBRARY.find(c => c.id === abilityHangarCardId && c.type !== UnitType.SPELL);
                 const cooldownLabel = ability.id === 'mothership_command'
                   ? `${Math.ceil(getMothershipCooldownMs() / 1000)}s CD`
                   : `${ability.cooldown}s CD`;

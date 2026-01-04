@@ -65,6 +65,7 @@ export interface Card {
   aoeRadius?: number;
   stunDuration?: number; // ms
   dotDuration?: number; // ms
+  hidden?: boolean;
   shape: 'circle' | 'square' | 'triangle' | 'diamond' | 'hexagon' | 'cross' | 'star';
   color: string;
   projectileType: ProjectileStyle;
@@ -215,6 +216,7 @@ export interface SpecialAbilityOption {
   step?: number;
   choices?: { value: string; label: string; hint?: string }[];
   defaultValue?: string | number | boolean;
+  lockDefault?: boolean;
 }
 
 export interface SpecialAbilityBlueprint {

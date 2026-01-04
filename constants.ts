@@ -69,6 +69,34 @@ export const EMP_ABILITY_BALANCE = {
   }
 } as const;
 
+export const ARACNO_SPIDER_MODES = {
+  lethal: {
+    hp: 360,
+    damage: 54,
+    speed: 1.85,
+    range: 26,
+    attackSpeed: 900,
+    targetPref: TargetPreference.ANY
+  },
+  healing: {
+    hp: 380,
+    damage: -32,
+    speed: 1.6,
+    range: 70,
+    attackSpeed: 1050,
+    targetPref: TargetPreference.ALLIES
+  },
+  kamikaze: {
+    hp: 320,
+    damage: 68,
+    speed: 2,
+    range: 18,
+    attackSpeed: 750,
+    targetPref: TargetPreference.ANY,
+    dotDuration: 2600
+  }
+} as const;
+
 const CARD_SEEDS: CardSeed[] = [
   {
     id: 'infantry',
@@ -792,6 +820,70 @@ const CARD_SEEDS: CardSeed[] = [
     projectileType: 'none'
   },
   {
+    id: 'aracno_spider_lethal',
+    name: 'Araña Colmillo',
+    cost: 1,
+    type: UnitType.GROUND,
+    faction: Faction.ALIEN,
+    alienSubtype: AlienSubtype.ARACNID,
+    hp: ARACNO_SPIDER_MODES.lethal.hp,
+    damage: ARACNO_SPIDER_MODES.lethal.damage,
+    speed: ARACNO_SPIDER_MODES.lethal.speed,
+    range: ARACNO_SPIDER_MODES.lethal.range,
+    attackSpeed: ARACNO_SPIDER_MODES.lethal.attackSpeed,
+    targetPref: ARACNO_SPIDER_MODES.lethal.targetPref,
+    description: 'Versión de choque: muerde rápido y presiona defensas blandas para abrir paso al enjambre.',
+    flavor: '“Si crujen, la colmena avanza.”',
+    count: 1,
+    shape: 'triangle',
+    color: '#c7ff8a',
+    projectileType: 'none',
+    hidden: true
+  },
+  {
+    id: 'aracno_spider_heal',
+    name: 'Araña Médica',
+    cost: 1,
+    type: UnitType.GROUND,
+    faction: Faction.ALIEN,
+    alienSubtype: AlienSubtype.ARACNID,
+    hp: ARACNO_SPIDER_MODES.healing.hp,
+    damage: ARACNO_SPIDER_MODES.healing.damage,
+    speed: ARACNO_SPIDER_MODES.healing.speed,
+    range: ARACNO_SPIDER_MODES.healing.range,
+    attackSpeed: ARACNO_SPIDER_MODES.healing.attackSpeed,
+    targetPref: ARACNO_SPIDER_MODES.healing.targetPref,
+    description: 'Se aferra a aliados para segregar bioestimulantes y extender su vida en combate.',
+    flavor: '“Su mordida escuece, pero solo para despertar a los tuyos.”',
+    count: 1,
+    shape: 'diamond',
+    color: '#a5ffcf',
+    projectileType: 'none',
+    hidden: true
+  },
+  {
+    id: 'aracno_spider_kami',
+    name: 'Araña Kamikaze',
+    cost: 1,
+    type: UnitType.GROUND,
+    faction: Faction.ALIEN,
+    alienSubtype: AlienSubtype.ARACNID,
+    hp: ARACNO_SPIDER_MODES.kamikaze.hp,
+    damage: ARACNO_SPIDER_MODES.kamikaze.damage,
+    speed: ARACNO_SPIDER_MODES.kamikaze.speed,
+    range: ARACNO_SPIDER_MODES.kamikaze.range,
+    attackSpeed: ARACNO_SPIDER_MODES.kamikaze.attackSpeed,
+    targetPref: ARACNO_SPIDER_MODES.kamikaze.targetPref,
+    description: 'Carga con glándulas volátiles y deja un veneno ardiente al explotar contra tropas enemigas.',
+    flavor: '“Brilla, chisporrotea y deja la zona hirviendo.”',
+    count: 1,
+    dotDuration: ARACNO_SPIDER_MODES.kamikaze.dotDuration,
+    shape: 'hexagon',
+    color: '#e4ff7a',
+    projectileType: 'plasma',
+    hidden: true
+  },
+  {
     id: 'humanoid_psionic_disruptor',
     name: 'Disruptor Psiónico',
     cost: 3,
@@ -1308,6 +1400,8 @@ export const CARD_LIBRARY: Card[] = CARD_SEEDS.map(card => ({
     : undefined
 }));
 
+export const PLAYABLE_CARD_LIBRARY = CARD_LIBRARY.filter(card => !card.hidden);
+
 export const CARD_DISTRIBUTION_SCHEMA = [
   {
     group: 'Humanos',
@@ -1356,8 +1450,21 @@ export const INITIAL_TOWERS_AI = [
   { type: TowerType.OUTER, x: ARENA_WIDTH - 380, y: ARENA_HEIGHT / 2 + 180, hp: 2040, range: 270, damage: 90, lane: 'BOTTOM' },
 ];
 
+const INNER_TOWER_HP = INITIAL_TOWERS_PLAYER.find(t => t.type === TowerType.INNER)?.hp || 0;
 export const OUTER_TOWER_HP = INITIAL_TOWERS_PLAYER.find(t => t.type === TowerType.OUTER)?.hp || 0;
 export const MOTHERSHIP_HP = Math.round(OUTER_TOWER_HP * MOTHERSHIP_BALANCE.hpRatioFromOuter);
+export const ARACNO_HIVE_BALANCE = {
+  hp: Math.round(INNER_TOWER_HP * 0.5),
+  decayPerSecond: INNER_TOWER_HP * 0.5 / 30,
+  spawnIntervalMs: 5000,
+  relativePositionFromKing: { x: 140, y: 0 }
+} as const;
+
+export const ARACNO_HIVE_ABILITY_BALANCE = {
+  cost: 5,
+  cooldown: 28,
+  defaultMode: 'lethal'
+} as const;
 
 export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
   {
@@ -1402,14 +1509,37 @@ export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
         label: 'Carga de Hangar',
         description: 'Tropa embarcada que se despliega junto a la nave insignia.',
         type: 'select',
-        choices: CARD_LIBRARY
+        choices: PLAYABLE_CARD_LIBRARY
           .filter(c => c.type !== UnitType.SPELL)
           .map(c => ({
             value: c.id,
             label: `${c.name} · ${c.cost}⚡`,
             hint: c.description
           })),
-        defaultValue: CARD_LIBRARY.find(c => c.type !== UnitType.SPELL)?.id
+        defaultValue: PLAYABLE_CARD_LIBRARY.find(c => c.type !== UnitType.SPELL)?.id
+      }
+    ]
+  },
+  {
+    id: 'aracno_hive',
+    name: 'Nido Aracno',
+    badge: 'Enjambre',
+    description: 'Estructura temporal que ancla un enjambre de arañas con rol configurable.',
+    cost: ARACNO_HIVE_ABILITY_BALANCE.cost,
+    cooldown: ARACNO_HIVE_ABILITY_BALANCE.cooldown,
+    options: [
+      {
+        key: 'mode',
+        label: 'Rol del enjambre',
+        description: 'Define el tipo de araña que incubará el nido.',
+        type: 'select',
+        choices: [
+          { value: 'lethal', label: 'Letal', hint: 'Daño directo contra tropas y defensas.' },
+          { value: 'healing', label: 'Sanadora', hint: 'Cicatriza aliados cercanos mordiendo suave.' },
+          { value: 'kamikaze', label: 'Kamikaze', hint: 'Impacto con veneno de daño en el tiempo.' }
+        ],
+        defaultValue: ARACNO_HIVE_ABILITY_BALANCE.defaultMode,
+        lockDefault: true
       }
     ]
   }

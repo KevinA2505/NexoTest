@@ -1,4 +1,4 @@
-import { CARD_DISTRIBUTION_SCHEMA, CARD_LIBRARY } from '../constants.ts';
+import { CARD_DISTRIBUTION_SCHEMA, PLAYABLE_CARD_LIBRARY } from '../constants.ts';
 import { Faction, UnitType } from '../types.ts';
 
 type RoleCounts = { melee: number; shooters: number; tank: number; structures: number; spells: number };
@@ -19,7 +19,7 @@ const findDuplicates = <T extends { id: string }>(items: T[]) => {
 };
 
 const validateAlienSubtypes = () => {
-  const invalid = CARD_LIBRARY.filter(
+  const invalid = PLAYABLE_CARD_LIBRARY.filter(
     card => card.faction === Faction.ALIEN && card.alienSubtype === undefined
   );
 
@@ -27,11 +27,11 @@ const validateAlienSubtypes = () => {
 };
 
 const validateDuplicates = () => {
-  const duplicates = findDuplicates(CARD_LIBRARY);
+  const duplicates = findDuplicates(PLAYABLE_CARD_LIBRARY);
   assert(duplicates.length === 0, `IDs duplicados detectados: ${duplicates.map(c => c.id).join(', ')}`);
 };
 
-const assignRoles = (groupCards: typeof CARD_LIBRARY) => {
+const assignRoles = (groupCards: typeof PLAYABLE_CARD_LIBRARY) => {
   const counts: RoleCounts = { melee: 0, shooters: 0, tank: 0, structures: 0, spells: 0 };
   const structures = groupCards.filter(card => card.type === UnitType.BUILDING);
   const spells = groupCards.filter(card => card.type === UnitType.SPELL);
@@ -62,7 +62,7 @@ const assignRoles = (groupCards: typeof CARD_LIBRARY) => {
 
 const validateGroups = () => {
   CARD_DISTRIBUTION_SCHEMA.forEach(schema => {
-    const groupCards = CARD_LIBRARY.filter(card => {
+    const groupCards = PLAYABLE_CARD_LIBRARY.filter(card => {
       if (card.faction !== schema.faction) return false;
       if ('subtype' in schema && schema.subtype) return card.alienSubtype === schema.subtype;
       return true;
@@ -88,7 +88,7 @@ const validateGroups = () => {
 };
 
 const run = () => {
-  assert(CARD_LIBRARY.length === 50, `CARD_LIBRARY contiene ${CARD_LIBRARY.length} entradas (esperado: 50).`);
+  assert(PLAYABLE_CARD_LIBRARY.length === 50, `CARD_LIBRARY contiene ${PLAYABLE_CARD_LIBRARY.length} entradas visibles (esperado: 50).`);
   validateDuplicates();
   validateAlienSubtypes();
   validateGroups();
