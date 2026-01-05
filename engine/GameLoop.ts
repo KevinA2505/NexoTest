@@ -114,8 +114,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     // Futuras variaciones de arena (clima/bioma) deberían activar aquí nuevos estados visuales sin tocar la lógica de unidades.
   }
 
-  newState.playerEnergy = Math.min(MAX_ENERGY, newState.playerEnergy + currentEnergyRate);
-  newState.aiEnergy = Math.min(MAX_ENERGY, newState.aiEnergy + currentEnergyRate);
+  const energyGain = currentEnergyRate * (deltaTime / 1000);
+  newState.playerEnergy = Math.min(MAX_ENERGY, newState.playerEnergy + energyGain);
+  newState.aiEnergy = Math.min(MAX_ENERGY, newState.aiEnergy + energyGain);
 
   if (newState.commanderAbilityCooldown > 0) {
     newState.commanderAbilityCooldown = Math.max(0, newState.commanderAbilityCooldown - deltaTime);
