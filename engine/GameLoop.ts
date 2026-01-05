@@ -1,5 +1,5 @@
 
-import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction } from '../types';
+import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, AttackKind, ProjectileStyle, VisualFamily } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 import { playSfx } from './audio';
@@ -12,28 +12,62 @@ const nearestBridgeCenter = (y: number) => BRIDGE_CENTERS.reduce((closest, curre
   return Math.abs(current - y) < Math.abs(closest - y) ? current : closest;
 });
 
+const SPORE_CARD_PATTERN = /(spore|spora|venom|venen|poison|toxin)/i;
+
+const getAttackKindFromStyle = (style?: ProjectileStyle): AttackKind => {
+  if (style === 'none') return 'melee';
+  if (style === 'laser' || style === 'beam') return 'laser';
+  return 'damage';
+};
+
+const resolveAttackKindFromUnit = (unit: GameUnit): AttackKind => {
+  if (unit.onHitEffect === 'heal') return 'heal';
+  if (unit.onHitEffect === 'poison' || SPORE_CARD_PATTERN.test(unit.cardId)) return 'spore';
+  return getAttackKindFromStyle(unit.projectileType);
+};
+
+const resolveAttackKindFromProjectile = (projectile: Projectile): AttackKind => {
+  if (projectile.onHitEffect === 'heal') return 'heal';
+  if (projectile.onHitEffect === 'poison' || SPORE_CARD_PATTERN.test(projectile.sourceCardId ?? '')) return 'spore';
+  return getAttackKindFromStyle(projectile.style);
+};
+
+const resolveSubfaction = (faction: Faction | undefined, visualFamily?: string, alienSubtype?: string) => {
+  if (faction === Faction.ALIEN) return alienSubtype;
+  return visualFamily ?? alienSubtype;
+};
+
 const registerDamage = (state: GameState, team: Team, amount: number) => {
   if (amount <= 0) return;
   state.damageTaken[team] = (state.damageTaken[team] || 0) + amount;
 };
 
 const dispatchSfxForEffect = (effect: VisualEffect, at: number) => {
+  const baseOptions = {
+    at,
+    style: effect.sourceStyle,
+    faction: effect.sourceFaction,
+    subfaction: effect.sourceAlienSubtype ?? effect.sourceVisualFamily,
+    attackKind: effect.attackKind,
+    cardId: effect.sourceCardId,
+    variant: effect.variant
+  };
   switch (effect.type) {
     case 'muzzle':
-      playSfx('muzzle', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      playSfx('muzzle', baseOptions);
       break;
     case 'spark':
-      playSfx('impact', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      playSfx('impact', baseOptions);
       break;
     case 'explosion':
-      playSfx('explosion', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      playSfx('explosion', baseOptions);
       break;
     case 'heal':
     case 'healing_field':
-      playSfx('heal', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      playSfx('heal', { ...baseOptions, attackKind: effect.attackKind ?? 'heal' });
       break;
     case 'shockwave':
-      playSfx('shockwave', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      playSfx('shockwave', baseOptions);
       break;
   }
 };
@@ -150,7 +184,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             color: '#32cd32',
             radius: card.aoeRadius || 180,
             sourceFaction: card.faction,
-            sourceStyle: card.projectileType
+            sourceStyle: card.projectileType,
+            sourceAlienSubtype: card.alienSubtype,
+            sourceVisualFamily: card.visualFamily,
+            sourceCardId: card.id,
+            attackKind: 'heal'
           });
         } else {
           // Hechizos de impacto único
@@ -186,7 +224,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             color: card.color,
             radius: card.aoeRadius,
             sourceFaction: card.faction,
-            sourceStyle: card.projectileType
+            sourceStyle: card.projectileType,
+            sourceAlienSubtype: card.alienSubtype,
+            sourceVisualFamily: card.visualFamily,
+            sourceCardId: card.id,
+            attackKind: card.damage < 0 ? 'heal' : (SPORE_CARD_PATTERN.test(card.id) ? 'spore' : getAttackKindFromStyle(card.projectileType))
           });
         }
       }
@@ -270,9 +312,19 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           radius: 120,
           sourceFaction: updatedUnit.faction,
           sourceStyle: updatedUnit.projectileType,
-          variant: updatedUnit.faction === Faction.ALIEN ? 'bio' : updatedUnit.faction === Faction.ANDROID ? 'ionic' : 'ember'
+          sourceAlienSubtype: updatedUnit.alienSubtype,
+          sourceVisualFamily: updatedUnit.visualFamily,
+          sourceCardId: updatedUnit.cardId,
+          attackKind: resolveAttackKindFromUnit(updatedUnit)
         });
-        playSfx('summon', { at: newState.time, faction: updatedUnit.faction, style: updatedUnit.projectileType });
+        playSfx('summon', {
+          at: newState.time,
+          faction: updatedUnit.faction,
+          style: updatedUnit.projectileType,
+          subfaction: resolveSubfaction(updatedUnit.faction, updatedUnit.visualFamily, updatedUnit.alienSubtype),
+          attackKind: resolveAttackKindFromUnit(updatedUnit),
+          cardId: updatedUnit.cardId
+        });
       }
     }
 
@@ -314,7 +366,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             x: updatedUnit.x, y: updatedUnit.y,
             type: 'muzzle', timer: 150, maxTimer: 150, color: updatedUnit.color,
             sourceFaction: updatedUnit.faction,
-            sourceStyle: updatedUnit.projectileType
+            sourceStyle: updatedUnit.projectileType,
+            sourceAlienSubtype: updatedUnit.alienSubtype,
+            sourceVisualFamily: updatedUnit.visualFamily,
+            sourceCardId: updatedUnit.cardId,
+            attackKind: resolveAttackKindFromUnit(updatedUnit)
           });
 
           if (updatedUnit.projectileType !== 'none' && updatedUnit.projectileType !== 'beam') {
@@ -377,7 +433,14 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
     if (updatedUnit.hp <= 0) {
       updatedUnit.isDead = true;
-      playSfx('death', { at: newState.time, faction: updatedUnit.faction, style: updatedUnit.projectileType });
+      playSfx('death', {
+        at: newState.time,
+        faction: updatedUnit.faction,
+        style: updatedUnit.projectileType,
+        subfaction: resolveSubfaction(updatedUnit.faction, updatedUnit.visualFamily, updatedUnit.alienSubtype),
+        attackKind: 'damage',
+        cardId: updatedUnit.cardId
+      });
 
       if (updatedUnit.splitOnDeath && updatedUnit.spawnChildId) {
         const childCard = CARD_LIBRARY.find(c => c.id === updatedUnit.spawnChildId && c.type !== UnitType.SPELL);
@@ -392,7 +455,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         x: updatedUnit.x, y: updatedUnit.y,
         type: 'explosion', timer: 500, maxTimer: 500, color: '#ff3300',
         sourceFaction: updatedUnit.faction,
-        sourceStyle: updatedUnit.projectileType
+        sourceStyle: updatedUnit.projectileType,
+        sourceAlienSubtype: updatedUnit.alienSubtype,
+        sourceVisualFamily: updatedUnit.visualFamily,
+        sourceCardId: updatedUnit.cardId,
+        attackKind: 'damage'
       });
     }
     return updatedUnit;
@@ -434,7 +501,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           type: 'shockwave', timer: 600, maxTimer: 600, color: tower.team === Team.PLAYER ? '#00ccff' : '#ff3366',
           radius: 150,
           sourceFaction: tower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID,
-          variant: tower.team === Team.PLAYER ? 'ember' : 'ionic'
+          sourceStyle: 'plasma',
+          sourceVisualFamily: tower.team === Team.PLAYER ? ('humano' as VisualFamily) : ('ciber' as VisualFamily),
+          attackKind: 'damage'
         });
       }
     }
@@ -452,15 +521,27 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           type: 'muzzle', timer: 200, maxTimer: 200,
           color: tower.team === Team.PLAYER ? '#00ccff' : '#ff3366',
           sourceFaction: tower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID,
-          sourceStyle: 'plasma'
+          sourceStyle: 'plasma',
+          sourceVisualFamily: tower.team === Team.PLAYER ? ('humano' as VisualFamily) : ('ciber' as VisualFamily),
+          attackKind: 'damage'
         });
       }
     }
 
     if (updatedTower.hp <= 0) {
       updatedTower.isDead = true;
-      playSfx('death', { at: newState.time, faction: updatedTower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID, style: 'plasma' });
-      addEffect(newState, { id: Math.random().toString(), x: updatedTower.x, y: updatedTower.y, type: 'explosion', timer: 1200, maxTimer: 1200, color: '#ffcc00', sourceFaction: updatedTower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID, sourceStyle: 'plasma' });
+      const towerFaction = updatedTower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID;
+      const towerFamily = towerFaction === Faction.HUMAN ? ('humano' as VisualFamily) : ('ciber' as VisualFamily);
+      playSfx('death', { at: newState.time, faction: towerFaction, style: 'plasma', subfaction: towerFamily, attackKind: 'damage' });
+      addEffect(newState, {
+        id: Math.random().toString(),
+        x: updatedTower.x, y: updatedTower.y,
+        type: 'explosion', timer: 1200, maxTimer: 1200, color: '#ffcc00',
+        sourceFaction: towerFaction,
+        sourceStyle: 'plasma',
+        sourceVisualFamily: towerFamily,
+        attackKind: 'damage'
+      });
       if (newState.arenaState === 'sudden_death' && newState.status === 'PLAYING') {
         newState.status = tower.team === Team.PLAYER ? 'DEFEAT' : 'VICTORY';
       } else if (updatedTower.type === TowerType.KING) {
@@ -471,6 +552,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   });
 
   newState.projectiles = newState.projectiles.filter(p => {
+    const projectileCard = p.sourceCardId ? CARD_LIBRARY.find(c => c.id === p.sourceCardId) : undefined;
     const target = newState.units.find(u => u.id === p.targetId) || newState.towers.find(t => t.id === p.targetId);
     if (!target || target.hp <= 0) return false;
 
@@ -490,7 +572,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             x: target.x, y: target.y,
             type: 'heal', timer: 200, maxTimer: 200, color: '#00ffaa',
             sourceFaction: p.faction,
-            sourceStyle: p.style
+            sourceStyle: p.style,
+            sourceAlienSubtype: projectileCard?.alienSubtype,
+            sourceVisualFamily: projectileCard?.visualFamily,
+            sourceCardId: p.sourceCardId,
+            attackKind: resolveAttackKindFromProjectile(p)
           });
         }
       } else {
@@ -500,15 +586,18 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         const prevHp = target.hp;
         target.hp -= p.damage;
         registerDamage(newState, target.team, Math.min(p.damage, prevHp));
-        addEffect(newState, {
-          id: Math.random().toString(),
-          x: target.x, y: target.y,
-          type: 'spark', timer: 200, maxTimer: 200, color: p.color,
-          sourceFaction: p.faction,
-          sourceStyle: p.style,
-          variant: p.faction === Faction.ALIEN ? 'bio' : p.faction === Faction.ANDROID ? 'ionic' : 'ember'
-        });
-      }
+          addEffect(newState, {
+            id: Math.random().toString(),
+            x: target.x, y: target.y,
+            type: 'spark', timer: 200, maxTimer: 200, color: p.color,
+            sourceFaction: p.faction,
+            sourceStyle: p.style,
+            sourceAlienSubtype: projectileCard?.alienSubtype,
+            sourceVisualFamily: projectileCard?.visualFamily,
+            sourceCardId: p.sourceCardId,
+            attackKind: resolveAttackKindFromProjectile(p)
+          });
+        }
 
       if (p.onHitEffect === 'poison' && p.sourceUnitId) {
         const sourceUnit = newState.units.find(u => u.id === p.sourceUnitId);
@@ -592,12 +681,13 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
   if (actualTarget.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return;
 
   const isTargetUnit = 'stunTimer' in actualTarget;
+  const attackerAttackKind = resolveAttackKindFromUnit(attacker);
 
   if (attacker.onHitEffect === 'heal') {
     if (isTargetUnit && actualTarget.team === attacker.team) {
       const healAmount = Math.abs(attacker.damage);
       actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + healAmount);
-      addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType });
+      addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType, sourceAlienSubtype: attacker.alienSubtype, sourceVisualFamily: attacker.visualFamily, sourceCardId: attacker.cardId, attackKind: attackerAttackKind });
     }
     return;
   }
@@ -616,7 +706,7 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
   } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
     if (attacker.damage < 0) {
       actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + Math.abs(attacker.damage));
-      addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType });
+      addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType, sourceAlienSubtype: attacker.alienSubtype, sourceVisualFamily: attacker.visualFamily, sourceCardId: attacker.cardId, attackKind: 'heal' });
     } else {
       const prevHp = actualTarget.hp;
       actualTarget.hp -= attacker.damage;

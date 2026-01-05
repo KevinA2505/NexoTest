@@ -40,6 +40,7 @@ export type ProjectileStyle = 'laser' | 'plasma' | 'missile' | 'beam' | 'none';
 export type ArenaState = 'normal' | 'overtime_glitch' | 'sudden_death';
 export type VisualFamily = 'humano' | 'ciber' | 'organico';
 export type SpellShape = 'concentric' | 'runes' | 'portal';
+export type AttackKind = 'laser' | 'spore' | 'heal' | 'damage' | 'melee';
 
 export interface Card {
   id: string;
@@ -172,6 +173,10 @@ export interface VisualEffect {
   radius?: number;
   sourceFaction?: Faction;
   sourceStyle?: ProjectileStyle;
+  sourceAlienSubtype?: AlienSubtype;
+  sourceVisualFamily?: VisualFamily;
+  sourceCardId?: string;
+  attackKind?: AttackKind;
   variant?: 'ionic' | 'bio' | 'ember';
 }
 
