@@ -2,6 +2,7 @@
 import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
+import { playSfx } from './audio';
 
 const BRIDGE_CENTERS = [BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y];
 
@@ -14,6 +15,32 @@ const nearestBridgeCenter = (y: number) => BRIDGE_CENTERS.reduce((closest, curre
 const registerDamage = (state: GameState, team: Team, amount: number) => {
   if (amount <= 0) return;
   state.damageTaken[team] = (state.damageTaken[team] || 0) + amount;
+};
+
+const dispatchSfxForEffect = (effect: VisualEffect, at: number) => {
+  switch (effect.type) {
+    case 'muzzle':
+      playSfx('muzzle', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      break;
+    case 'spark':
+      playSfx('impact', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      break;
+    case 'explosion':
+      playSfx('explosion', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      break;
+    case 'heal':
+    case 'healing_field':
+      playSfx('heal', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      break;
+    case 'shockwave':
+      playSfx('shockwave', { at, style: effect.sourceStyle, variant: effect.variant, faction: effect.sourceFaction });
+      break;
+  }
+};
+
+const addEffect = (state: GameState, effect: VisualEffect) => {
+  state.effects.push(effect);
+  dispatchSfxForEffect(effect, state.time);
 };
 
 export const updateGame = (state: GameState, deltaTime: number): GameState => {
@@ -85,7 +112,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     const glitchChance = Math.min(1, deltaTime / 180);
     if (Math.random() < glitchChance) {
       const duration = 120 + Math.random() * 220;
-      newState.effects.push({
+      addEffect(newState, {
         id: 'glitch-' + Math.random(),
         x: Math.random() * ARENA_WIDTH,
         y: Math.random() * ARENA_HEIGHT,
@@ -114,14 +141,16 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             duration: 5000,
             nextTick: 0
           });
-          newState.effects.push({
+          addEffect(newState, {
             id: 'hf-' + Math.random(),
             x: ps.x, y: ps.y,
             type: 'healing_field',
             timer: 5000,
             maxTimer: 5000,
             color: '#32cd32',
-            radius: card.aoeRadius || 180
+            radius: card.aoeRadius || 180,
+            sourceFaction: card.faction,
+            sourceStyle: card.projectileType
           });
         } else {
           // Hechizos de impacto único
@@ -148,14 +177,16 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             }
           });
 
-          newState.effects.push({
+          addEffect(newState, {
             id: Math.random().toString(),
             x: ps.x, y: ps.y,
             type: card.damage < 0 ? 'heal' : (ps.cardId === 'orbital_laser' ? 'emp_wave' : 'explosion'),
             timer: 800,
             maxTimer: 800,
             color: card.color,
-            radius: card.aoeRadius
+            radius: card.aoeRadius,
+            sourceFaction: card.faction,
+            sourceStyle: card.projectileType
           });
         }
       }
@@ -229,7 +260,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         }
 
         updatedUnit.spawnCountdownMs += updatedUnit.spawnIntervalMs;
-        newState.effects.push({
+        addEffect(newState, {
           id: 'spawn-' + Math.random(),
           x: updatedUnit.x, y: updatedUnit.y,
           type: 'shockwave',
@@ -237,8 +268,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           maxTimer: 400,
           color: updatedUnit.color,
           radius: 120,
-          sourceFaction: updatedUnit.faction
+          sourceFaction: updatedUnit.faction,
+          sourceStyle: updatedUnit.projectileType,
+          variant: updatedUnit.faction === Faction.ALIEN ? 'bio' : updatedUnit.faction === Faction.ANDROID ? 'ionic' : 'ember'
         });
+        playSfx('summon', { at: newState.time, faction: updatedUnit.faction, style: updatedUnit.projectileType });
       }
     }
 
@@ -275,7 +309,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           applyDamage(updatedUnit, target, newState);
           updatedUnit.lastAttack = newState.time;
           
-          newState.effects.push({
+          addEffect(newState, {
             id: Math.random().toString(),
             x: updatedUnit.x, y: updatedUnit.y,
             type: 'muzzle', timer: 150, maxTimer: 150, color: updatedUnit.color,
@@ -343,6 +377,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
     if (updatedUnit.hp <= 0) {
       updatedUnit.isDead = true;
+      playSfx('death', { at: newState.time, faction: updatedUnit.faction, style: updatedUnit.projectileType });
 
       if (updatedUnit.splitOnDeath && updatedUnit.spawnChildId) {
         const childCard = CARD_LIBRARY.find(c => c.id === updatedUnit.spawnChildId && c.type !== UnitType.SPELL);
@@ -352,10 +387,12 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         }
       }
 
-      newState.effects.push({
+      addEffect(newState, {
         id: Math.random().toString(),
         x: updatedUnit.x, y: updatedUnit.y,
-        type: 'explosion', timer: 500, maxTimer: 500, color: '#ff3300'
+        type: 'explosion', timer: 500, maxTimer: 500, color: '#ff3300',
+        sourceFaction: updatedUnit.faction,
+        sourceStyle: updatedUnit.projectileType
       });
     }
     return updatedUnit;
@@ -391,7 +428,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         });
 
         updatedTower.shockwaveCooldown = 15000;
-        newState.effects.push({
+        addEffect(newState, {
           id: 'sw-' + Math.random(),
           x: tower.x, y: tower.y,
           type: 'shockwave', timer: 600, maxTimer: 600, color: tower.team === Team.PLAYER ? '#00ccff' : '#ff3366',
@@ -409,7 +446,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
       if (target) {
         spawnProjectile(updatedTower, target, newState, 'plasma');
         updatedTower.lastAttack = newState.time;
-        newState.effects.push({
+        addEffect(newState, {
           id: Math.random().toString(),
           x: tower.x, y: tower.y,
           type: 'muzzle', timer: 200, maxTimer: 200,
@@ -422,7 +459,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
     if (updatedTower.hp <= 0) {
       updatedTower.isDead = true;
-      newState.effects.push({ id: Math.random().toString(), x: updatedTower.x, y: updatedTower.y, type: 'explosion', timer: 1200, maxTimer: 1200, color: '#ffcc00' });
+      playSfx('death', { at: newState.time, faction: updatedTower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID, style: 'plasma' });
+      addEffect(newState, { id: Math.random().toString(), x: updatedTower.x, y: updatedTower.y, type: 'explosion', timer: 1200, maxTimer: 1200, color: '#ffcc00', sourceFaction: updatedTower.team === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID, sourceStyle: 'plasma' });
       if (newState.arenaState === 'sudden_death' && newState.status === 'PLAYING') {
         newState.status = tower.team === Team.PLAYER ? 'DEFEAT' : 'VICTORY';
       } else if (updatedTower.type === TowerType.KING) {
@@ -447,7 +485,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         if (isTargetUnit && target.team === p.team) {
           const healAmount = Math.abs(p.damage);
           target.hp = Math.min(target.maxHp, target.hp + healAmount);
-          newState.effects.push({
+          addEffect(newState, {
             id: Math.random().toString(),
             x: target.x, y: target.y,
             type: 'heal', timer: 200, maxTimer: 200, color: '#00ffaa',
@@ -462,7 +500,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         const prevHp = target.hp;
         target.hp -= p.damage;
         registerDamage(newState, target.team, Math.min(p.damage, prevHp));
-        newState.effects.push({
+        addEffect(newState, {
           id: Math.random().toString(),
           x: target.x, y: target.y,
           type: 'spark', timer: 200, maxTimer: 200, color: p.color,
@@ -559,7 +597,7 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
     if (isTargetUnit && actualTarget.team === attacker.team) {
       const healAmount = Math.abs(attacker.damage);
       actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + healAmount);
-      state.effects.push({ id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa' });
+      addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType });
     }
     return;
   }
@@ -578,7 +616,7 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
   } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
     if (attacker.damage < 0) {
       actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + Math.abs(attacker.damage));
-      state.effects.push({ id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa' });
+      addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType });
     } else {
       const prevHp = actualTarget.hp;
       actualTarget.hp -= attacker.damage;
