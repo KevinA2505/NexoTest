@@ -2,7 +2,18 @@ import { AlienSubtype, AttackKind, Faction, ProjectileStyle, VisualFamily } from
 
 type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle';
 
-export type SfxKind = 'muzzle' | 'impact' | 'explosion' | 'heal' | 'shockwave' | 'summon' | 'death';
+export type SfxKind =
+  | 'muzzle'
+  | 'impact'
+  | 'explosion'
+  | 'heal'
+  | 'shockwave'
+  | 'summon'
+  | 'death'
+  | 'emp_wave'
+  | 'laser_beam'
+  | 'healing_field'
+  | 'glitch';
 
 export interface PlaySfxOptions {
   style?: ProjectileStyle;
@@ -31,9 +42,13 @@ const throttleDefaults: Partial<Record<SfxKind, number>> = {
   impact: 70,
   explosion: 220,
   heal: 140,
+  healing_field: 220,
   shockwave: 260,
   summon: 260,
-  death: 240
+  death: 240,
+  emp_wave: 260,
+  laser_beam: 160,
+  glitch: 260
 };
 
 const ALIEN_SUBTYPES = new Set<string>(Object.values(AlienSubtype));
@@ -43,7 +58,7 @@ const SPORE_PATTERN = /(spore|spora|venom|venen|poison|toxin)/i;
 
 const resolveAttackKind = (type: SfxKind, options: PlaySfxOptions): AttackKind => {
   if (options.attackKind) return options.attackKind;
-  if (type === 'heal') return 'heal';
+  if (type === 'heal' || type === 'healing_field') return 'heal';
   const hintedCardId = options.cardId;
   if (hintedCardId && SPORE_PATTERN.test(hintedCardId)) return 'spore';
   if (options.style === 'none') return 'melee';
@@ -145,7 +160,35 @@ const clipLibrary: Record<string, SfxClip> = {
   'summon:damage_alien': { frequency: 560, duration: 0.26, type: 'sine', gain: 0.17 },
   'summon:melee_default': { frequency: 520, duration: 0.25, type: 'triangle', gain: 0.17, pitchBend: -50 },
   'summon:damage_default': { frequency: 620, duration: 0.25, type: 'sine', gain: 0.16 },
-  'summon:default': { frequency: 620, duration: 0.25, type: 'sine', gain: 0.16 }
+  'summon:default': { frequency: 620, duration: 0.25, type: 'sine', gain: 0.16 },
+
+  // EMP waves
+  'emp_wave:laser_human': { frequency: 420, duration: 0.38, type: 'sawtooth', gain: 0.23, noise: true, pitchBend: -220 },
+  'emp_wave:laser_android': { frequency: 520, duration: 0.36, type: 'square', gain: 0.24, noise: true, pitchBend: -240 },
+  'emp_wave:laser_alien': { frequency: 360, duration: 0.4, type: 'triangle', gain: 0.21, noise: true, pitchBend: -160 },
+  'emp_wave:laser_default': { frequency: 400, duration: 0.38, type: 'triangle', gain: 0.22, noise: true, pitchBend: -180 },
+  'emp_wave:default': { frequency: 400, duration: 0.38, type: 'triangle', gain: 0.22, noise: true, pitchBend: -180 },
+
+  // Laser beams (channeled)
+  'laser_beam:laser_human': { frequency: 1680, duration: 0.22, type: 'sawtooth', gain: 0.17, pitchBend: -260 },
+  'laser_beam:laser_android': { frequency: 1840, duration: 0.2, type: 'square', gain: 0.18, pitchBend: -300 },
+  'laser_beam:laser_alien': { frequency: 1500, duration: 0.23, type: 'triangle', gain: 0.17, pitchBend: -220 },
+  'laser_beam:laser_default': { frequency: 1600, duration: 0.22, type: 'sawtooth', gain: 0.17, pitchBend: -240 },
+  'laser_beam:default': { frequency: 1600, duration: 0.22, type: 'sawtooth', gain: 0.17, pitchBend: -240 },
+
+  // Healing fields (persistent heal identity)
+  'healing_field:heal_human': { frequency: 980, duration: 0.4, type: 'sine', gain: 0.14, pitchBend: -40 },
+  'healing_field:heal_android': { frequency: 1220, duration: 0.38, type: 'triangle', gain: 0.15, pitchBend: -70 },
+  'healing_field:heal_alien': { frequency: 820, duration: 0.42, type: 'sine', gain: 0.14, pitchBend: -30 },
+  'healing_field:heal_default': { frequency: 900, duration: 0.4, type: 'sine', gain: 0.13 },
+  'healing_field:default': { frequency: 900, duration: 0.4, type: 'sine', gain: 0.13 },
+
+  // Glitches (ambient digital bursts)
+  'glitch:damage_human': { frequency: 760, duration: 0.16, type: 'square', gain: 0.16, noise: true },
+  'glitch:damage_android': { frequency: 960, duration: 0.14, type: 'square', gain: 0.17, noise: true, pitchBend: -90 },
+  'glitch:damage_alien': { frequency: 640, duration: 0.18, type: 'triangle', gain: 0.16, noise: true, pitchBend: -60 },
+  'glitch:damage_default': { frequency: 720, duration: 0.16, type: 'square', gain: 0.15, noise: true },
+  'glitch:default': { frequency: 720, duration: 0.16, type: 'square', gain: 0.15, noise: true }
 };
 
 const getAudioContext = (): AudioContext | null => {
