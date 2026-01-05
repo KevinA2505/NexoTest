@@ -18,6 +18,7 @@ interface ArenaProps {
 
 const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsChange }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isSuddenDeath = state.arenaState === 'sudden_death';
 
   const starField = useMemo(() => {
     return Array.from({ length: 120 }).map(() => ({
@@ -1020,6 +1021,9 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
   return (
     <div className="relative border-4 border-[#1a3a5a] bg-[#020202] shadow-[0_0_150px_rgba(0,204,255,0.15)] rounded-2xl overflow-hidden transition-all duration-700">
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.15)_50%),linear-gradient(90deg,rgba(255,0,0,0.03),rgba(0,255,0,0.01),rgba(0,0,255,0.03))] bg-[length:100%_4px,3px_100%] z-10 opacity-40"></div>
+      {isSuddenDeath && (
+        <div className="absolute inset-0 pointer-events-none bg-red-900/25 mix-blend-screen z-30 animate-pulse" style={{ animationDuration: '2.4s' }}></div>
+      )}
       <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.6)] z-20"></div>
       <canvas ref={canvasRef} width={ARENA_WIDTH} height={ARENA_HEIGHT} onClick={handleCanvasClick} className="w-full h-auto cursor-crosshair block" />
     </div>

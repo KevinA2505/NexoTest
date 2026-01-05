@@ -78,7 +78,13 @@ const App: React.FC = () => {
       aiCommanderAbilityCooldown: 0,
       aiSpecialAbility: rollRandomAbilitySelection(),
       arenaState: 'normal',
-      arenaStateSince: 0
+      arenaStateSince: 0,
+      suddenDeathActive: false,
+      suddenDeathTimeExtensionMs: 0,
+      damageTaken: {
+        [Team.PLAYER]: 0,
+        [Team.AI]: 0
+      }
     };
   });
 
@@ -402,6 +408,14 @@ const App: React.FC = () => {
       commanderAbilityCooldown: 0,
       aiCommanderAbilityCooldown: 0,
       aiSpecialAbility: rollRandomAbilitySelection(),
+      suddenDeathActive: false,
+      suddenDeathTimeExtensionMs: 0,
+      damageTaken: {
+        [Team.PLAYER]: 0,
+        [Team.AI]: 0
+      },
+      arenaState: 'normal',
+      arenaStateSince: 0,
       towers: [
         ...INITIAL_TOWERS_PLAYER.map(t => ({ ...t, id: 'p-' + Math.random(), team: Team.PLAYER, locked: false, isDead: false, maxHp: t.hp, lastAttack: 0, attackSpeed: 1100, shockwaveCooldown: 0 })),
         ...INITIAL_TOWERS_AI.map(t => ({ ...t, id: 'a-' + Math.random(), team: Team.AI, locked: false, isDead: false, maxHp: t.hp, lastAttack: 0, attackSpeed: 1100, shockwaveCooldown: 0 }))
@@ -424,8 +438,10 @@ const App: React.FC = () => {
     }));
   };
 
-  const timeRemaining = Math.max(0, GAME_DURATION - Math.floor(gameState.time / 1000));
-  const isOvertime = timeRemaining <= 60 && timeRemaining > 0;
+  const totalDuration = GAME_DURATION + (gameState.suddenDeathActive ? gameState.suddenDeathTimeExtensionMs / 1000 : 0);
+  const timeRemaining = Math.max(0, totalDuration - Math.floor(gameState.time / 1000));
+  const isSuddenDeath = gameState.arenaState === 'sudden_death';
+  const isOvertime = !isSuddenDeath && timeRemaining <= 60 && timeRemaining > 0;
   const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
   const abilityCost = activeAbility.cost;
   const selectedHangarCardId = specialAbility.configuration.hangarUnit as string | undefined;
@@ -567,10 +583,14 @@ const App: React.FC = () => {
 
           <div className="flex flex-col items-center justify-center">
               <span className="text-[8px] opacity-40 uppercase tracking-widest">Sincronización Tactical</span>
-              <div className={`text-xl ${isOvertime ? 'text-[#ff3366] animate-pulse' : 'text-white'}`}>
+              <div className={`text-xl ${isSuddenDeath ? 'text-[#ff5555] animate-pulse' : isOvertime ? 'text-[#ff3366] animate-pulse' : 'text-white'}`}>
                   {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
               </div>
-              {isOvertime && <div className="text-[8px] text-[#ff3366] font-black uppercase">Fisión Overclock x2</div>}
+              {isSuddenDeath ? (
+                <div className="text-[8px] text-[#ff5555] font-black uppercase">Muerte Súbita · Primer derribo define victoria</div>
+              ) : (
+                isOvertime && <div className="text-[8px] text-[#ff3366] font-black uppercase">Fisión Overclock x2</div>
+              )}
           </div>
 
           <div className="flex gap-6 text-lg">

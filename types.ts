@@ -37,7 +37,7 @@ export enum TowerType {
 }
 
 export type ProjectileStyle = 'laser' | 'plasma' | 'missile' | 'beam' | 'none';
-export type ArenaState = 'normal' | 'overtime_glitch';
+export type ArenaState = 'normal' | 'overtime_glitch' | 'sudden_death';
 export type VisualFamily = 'humano' | 'ciber' | 'organico';
 export type SpellShape = 'concentric' | 'runes' | 'portal';
 
@@ -217,6 +217,9 @@ export interface GameState {
   aiSpecialAbility: SelectedSpecialAbility;
   arenaState: ArenaState;
   arenaStateSince?: number;
+  suddenDeathActive: boolean;
+  suddenDeathTimeExtensionMs: number;
+  damageTaken: Record<Team, number>;
 }
 
 export type SpecialAbilityOptionType = 'toggle' | 'slider' | 'select';
