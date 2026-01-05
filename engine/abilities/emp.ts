@@ -1,5 +1,5 @@
 import { ARENA_HEIGHT, ARENA_WIDTH, EMP_ABILITY_BALANCE } from '../../constants';
-import { GameState, Team } from '../../types';
+import { Faction, GameState, ProjectileStyle, Team } from '../../types';
 
 export type EmpModeKey = keyof typeof EMP_ABILITY_BALANCE.modes;
 
@@ -13,6 +13,8 @@ export const applyEmpAbility = (state: GameState, casterTeam: Team, mode?: strin
   const modeConfig = getEmpModeConfig(mode);
   const centerX = ARENA_WIDTH / 2;
   const centerY = ARENA_HEIGHT / 2;
+  const sourceFaction = casterTeam === Team.PLAYER ? Faction.HUMAN : Faction.ANDROID;
+  const sourceStyle: ProjectileStyle = 'beam';
 
   const updatedUnits = state.units.map(unit => {
     if (unit.team === casterTeam || unit.isDead) return unit;
@@ -47,7 +49,10 @@ export const applyEmpAbility = (state: GameState, casterTeam: Team, mode?: strin
         timer: 1000,
         maxTimer: 1000,
         color: '#00ccff',
-        radius: EMP_ABILITY_BALANCE.radius
+        radius: EMP_ABILITY_BALANCE.radius,
+        sourceFaction,
+        sourceStyle,
+        attackKind: 'laser'
       }
     ],
     playerEnergy: nextPlayerEnergy,

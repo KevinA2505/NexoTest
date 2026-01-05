@@ -1,5 +1,5 @@
 
-import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, AttackKind, ProjectileStyle, VisualFamily } from '../types';
+import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, AttackKind, ProjectileStyle, VisualFamily, AlienSubtype } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 import { playSfx } from './audio';
@@ -32,7 +32,11 @@ const resolveAttackKindFromProjectile = (projectile: Projectile): AttackKind => 
   return getAttackKindFromStyle(projectile.style);
 };
 
-const resolveSubfaction = (faction: Faction | undefined, visualFamily?: string, alienSubtype?: string) => {
+const resolveSubfaction = (
+  faction: Faction | undefined,
+  visualFamily?: VisualFamily,
+  alienSubtype?: AlienSubtype
+): VisualFamily | AlienSubtype | undefined => {
   if (faction === Faction.ALIEN) return alienSubtype;
   return visualFamily ?? alienSubtype;
 };
@@ -63,11 +67,22 @@ const dispatchSfxForEffect = (effect: VisualEffect, at: number) => {
       playSfx('explosion', baseOptions);
       break;
     case 'heal':
-    case 'healing_field':
       playSfx('heal', { ...baseOptions, attackKind: effect.attackKind ?? 'heal' });
+      break;
+    case 'healing_field':
+      playSfx('healing_field', { ...baseOptions, attackKind: effect.attackKind ?? 'heal' });
+      break;
+    case 'emp_wave':
+      playSfx('emp_wave', { ...baseOptions, attackKind: effect.attackKind ?? 'laser' });
       break;
     case 'shockwave':
       playSfx('shockwave', baseOptions);
+      break;
+    case 'laser_beam':
+      playSfx('laser_beam', { ...baseOptions, attackKind: effect.attackKind ?? 'laser', style: effect.sourceStyle ?? 'beam' });
+      break;
+    case 'glitch':
+      playSfx('glitch', baseOptions);
       break;
   }
 };
@@ -154,7 +169,11 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         timer: duration,
         maxTimer: duration,
         color: '#ff3b30',
-        radius: 12 + Math.random() * 24
+        radius: 12 + Math.random() * 24,
+        sourceFaction: Faction.ANDROID,
+        sourceStyle: 'beam',
+        attackKind: 'damage',
+        variant: 'ionic'
       });
     }
     // Nuevos estados podrían generar sus propios efectos ambientales aquí sin alterar daño, colisiones ni energía.
