@@ -561,6 +561,18 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         sourceVisualFamily: towerFamily,
         attackKind: 'damage'
       });
+      const towerRuinDurationMs = (GAME_DURATION + 120) * 1000;
+      addEffect(newState, {
+        id: 'ruin-' + Math.random(),
+        x: updatedTower.x, y: updatedTower.y,
+        type: 'tower_ruin',
+        timer: towerRuinDurationMs,
+        maxTimer: towerRuinDurationMs,
+        color: '#2f2624',
+        radius: updatedTower.type === TowerType.KING ? 64 : 48,
+        sourceFaction: towerFaction,
+        sourceVisualFamily: towerFamily
+      });
       if (newState.arenaState === 'sudden_death' && newState.status === 'PLAYING') {
         newState.status = tower.team === Team.PLAYER ? 'DEFEAT' : 'VICTORY';
       } else if (updatedTower.type === TowerType.KING) {

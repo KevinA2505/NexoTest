@@ -740,6 +740,58 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     ctx.restore();
   };
 
+  const drawTowerRuin = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    size: number,
+    accentColor: string
+  ) => {
+    const time = Date.now();
+    const baseColor = '#1b1716';
+    const scorchColor = '#2d2422';
+    ctx.save();
+    const gradient = ctx.createRadialGradient(x, y, size * 0.2, x, y, size * 1.8);
+    gradient.addColorStop(0, `${baseColor}ee`);
+    gradient.addColorStop(0.55, `${scorchColor}cc`);
+    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, size * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = `${accentColor}55`;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 8]);
+    ctx.beginPath();
+    ctx.arc(x, y, size * 1.05, time / 1200, time / 1200 + Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle = '#2a2120';
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI * 2 / 6) * i + Math.sin(time / 800 + i) * 0.2;
+      const dist = size * (0.35 + (i % 2) * 0.25);
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(angle) * dist, y + Math.sin(angle) * dist);
+      ctx.lineTo(x + Math.cos(angle + 0.4) * (dist + size * 0.4), y + Math.sin(angle + 0.4) * (dist + size * 0.4));
+      ctx.lineTo(x + Math.cos(angle - 0.5) * (dist + size * 0.25), y + Math.sin(angle - 0.5) * (dist + size * 0.25));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const angle = (Math.PI / 2) * i + 0.2;
+      ctx.beginPath();
+      ctx.moveTo(x + Math.cos(angle) * size * 0.2, y + Math.sin(angle) * size * 0.2);
+      ctx.lineTo(x + Math.cos(angle) * size * 1.2, y + Math.sin(angle) * size * 1.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
   const draw = (ctx: CanvasRenderingContext2D) => {
     ctx.clearRect(0, 0, ARENA_WIDTH, ARENA_HEIGHT);
     ctx.fillStyle = '#01050a';
@@ -755,15 +807,18 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     drawPlasmaBarrier(ctx);
 
     state.towers.forEach(tower => {
-      if (tower.isDead) return;
-      drawTowerAmbience(ctx, tower);
       const color = tower.team === Team.PLAYER ? '#00ccff' : '#ff3366';
+      const size = tower.type === TowerType.KING ? 42 : 30;
+      if (tower.isDead) {
+        drawTowerRuin(ctx, tower.x, tower.y, size * 1.1, color);
+        return;
+      }
+      drawTowerAmbience(ctx, tower);
       ctx.shadowBlur = tower.locked ? 5 : 25;
       ctx.shadowColor = color;
       ctx.fillStyle = '#050505';
       ctx.strokeStyle = color;
       ctx.lineWidth = tower.locked ? 1 : 4;
-      const size = tower.type === TowerType.KING ? 42 : 30;
       ctx.save();
       ctx.translate(tower.x, tower.y);
       if (!tower.locked) {
@@ -823,6 +878,11 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
         const baseRadius = ef.radius || 80;
         ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * baseRadius, 0, Math.PI * 2); ctx.lineWidth = 4; ctx.stroke();
         ctx.beginPath(); ctx.arc(ef.x, ef.y, (1 - opacity) * (baseRadius * 0.5), 0, Math.PI * 2); ctx.fill();
+      } else if (ef.type === 'tower_ruin') {
+        const accentColor = ef.sourceFaction === Faction.ANDROID ? '#ff3366' : '#00ccff';
+        const size = (ef.radius || 48) * 0.7;
+        ctx.globalAlpha = 0.85;
+        drawTowerRuin(ctx, ef.x, ef.y, size, accentColor);
       } else if (ef.type === 'shockwave') {
         ctx.lineWidth = 5;
         ctx.setLineDash([10, 5]);
