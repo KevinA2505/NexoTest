@@ -166,7 +166,7 @@ export interface VisualEffect {
   y: number;
   startX?: number;
   startY?: number;
-  type: 'explosion' | 'spark' | 'heal' | 'muzzle' | 'emp_wave' | 'laser_beam' | 'shockwave' | 'healing_field' | 'glitch';
+  type: 'explosion' | 'spark' | 'heal' | 'muzzle' | 'emp_wave' | 'laser_beam' | 'shockwave' | 'healing_field' | 'glitch' | 'tower_ruin';
   timer: number;
   maxTimer: number;
   color: string;
