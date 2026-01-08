@@ -301,7 +301,7 @@ const CARD_SEEDS: CardSeed[] = [
     type: UnitType.SPELL,
     faction: Faction.HUMAN,
     hp: 1,
-    damage: 420,
+    damage: 280,
     speed: 0,
     range: 0,
     attackSpeed: 0,
