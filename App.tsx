@@ -212,7 +212,7 @@ const App: React.FC = () => {
         color: card.color,
         isAoE: card.isAoE,
         aoeRadius: card.aoeRadius,
-        stunTimer: 0,
+        stunTimer: 1000,
         dotTimer: 0,
         projectileType: card.projectileType,
         isOverclocked: false,

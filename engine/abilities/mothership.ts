@@ -39,7 +39,7 @@ export const createUnitsFromCard = (cardId: string, team: Team, lane: 'TOP' | 'B
       color: card.color,
       isAoE: card.isAoE,
       aoeRadius: card.aoeRadius,
-      stunTimer: 0,
+      stunTimer: 1000,
       dotTimer: 0,
       projectileType: card.projectileType,
       isOverclocked: false,
