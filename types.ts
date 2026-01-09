@@ -119,6 +119,13 @@ export interface GameUnit {
   onHitEffect?: 'heal' | 'poison';
   onHitDotDurationMs?: number;
   spawnMode?: string;
+  isMecha?: boolean;
+  mechaMode?: 'shield' | 'laser';
+  mechaHp?: number;
+  mechaMaxHp?: number;
+  mechaLaserCooldownMs?: number;
+  mechaLaserActiveMs?: number;
+  mechaPilotCardId?: string;
 }
 
 export interface Tower {
