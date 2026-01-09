@@ -476,8 +476,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             }
         });
 
-        updatedUnit.x += vx;
-        updatedUnit.y += vy;
+        const movementScale = deltaSeconds * 60;
+        updatedUnit.x += vx * movementScale;
+        updatedUnit.y += vy * movementScale;
       }
     }
 
@@ -620,8 +621,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
     const angle = Math.atan2(target.y - p.y, target.x - p.x);
     const speedFactor = p.originUnitType === UnitType.AIR ? 1.05 : 1;
-    p.x += Math.cos(angle) * p.speed * speedFactor;
-    p.y += Math.sin(angle) * p.speed * speedFactor;
+    const movementScale = deltaSeconds * 60;
+    p.x += Math.cos(angle) * p.speed * speedFactor * movementScale;
+    p.y += Math.sin(angle) * p.speed * speedFactor * movementScale;
 
     if (Math.hypot(target.x - p.x, target.y - p.y) < 12) {
       const isTargetUnit = 'stunTimer' in target;
