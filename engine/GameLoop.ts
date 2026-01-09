@@ -46,6 +46,16 @@ const registerDamage = (state: GameState, team: Team, amount: number) => {
   state.damageTaken[team] = (state.damageTaken[team] || 0) + amount;
 };
 
+const isTowerTarget = (target: GameUnit | Tower): target is Tower => 'locked' in target;
+
+const registerDamageDealt = (state: GameState, team: Team, amount: number, targetIsTower: boolean) => {
+  if (amount <= 0) return;
+  state.metrics.totalDamage[team] = (state.metrics.totalDamage[team] || 0) + amount;
+  if (targetIsTower) {
+    state.metrics.towerDamage[team] = (state.metrics.towerDamage[team] || 0) + amount;
+  }
+};
+
 const dispatchSfxForEffect = (effect: VisualEffect, at: number) => {
   const baseOptions = {
     at,
@@ -93,7 +103,22 @@ const addEffect = (state: GameState, effect: VisualEffect) => {
 };
 
 export const updateGame = (state: GameState, deltaTime: number): GameState => {
-  const newState: GameState = { ...state, damageTaken: { ...state.damageTaken } };
+  const newState: GameState = {
+    ...state,
+    damageTaken: { ...state.damageTaken },
+    metrics: {
+      ...state.metrics,
+      totalDamage: { ...state.metrics.totalDamage },
+      towerDamage: { ...state.metrics.towerDamage },
+      totalCost: { ...state.metrics.totalCost },
+      totalCardsPlayed: { ...state.metrics.totalCardsPlayed },
+      cardUsage: {
+        ...state.metrics.cardUsage,
+        [Team.PLAYER]: { ...state.metrics.cardUsage[Team.PLAYER] },
+        [Team.AI]: { ...state.metrics.cardUsage[Team.AI] }
+      }
+    }
+  };
   const previousElapsedSeconds = state.time / 1000;
   const previousTotalDuration = GAME_DURATION + (state.suddenDeathActive ? state.suddenDeathTimeExtensionMs / 1000 : 0);
   const previousTimeRemaining = Math.max(0, previousTotalDuration - previousElapsedSeconds);
@@ -230,7 +255,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             } else {
               const prevHp = t.hp;
               t.hp -= card.damage;
-              registerDamage(newState, t.team, Math.min(card.damage, prevHp));
+              const dealtDamage = Math.min(card.damage, prevHp);
+              registerDamage(newState, t.team, dealtDamage);
+              registerDamageDealt(newState, ps.team, dealtDamage, isTowerTarget(t as GameUnit | Tower));
             }
           });
 
@@ -275,6 +302,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           a.hp = nextHp;
           const damageDelta = Math.max(0, prevHp - nextHp);
           registerDamage(newState, a.team, damageDelta);
+          if (card.damage > 0) {
+            registerDamageDealt(newState, as.team, damageDelta, isTowerTarget(a));
+          }
         });
       }
       as.nextTick = 1000; // Tick cada segundo
@@ -616,7 +646,9 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         }
         const prevHp = target.hp;
         target.hp -= p.damage;
-        registerDamage(newState, target.team, Math.min(p.damage, prevHp));
+        const dealtDamage = Math.min(p.damage, prevHp);
+        registerDamage(newState, target.team, dealtDamage);
+        registerDamageDealt(newState, p.team, dealtDamage, isTowerTarget(target));
           addEffect(newState, {
             id: Math.random().toString(),
             x: target.x, y: target.y,
@@ -732,7 +764,11 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
     targets.forEach(t => {
       const prevHp = t.hp;
       t.hp -= attacker.damage;
-      if (attacker.damage > 0) registerDamage(state, t.team, Math.min(attacker.damage, prevHp));
+      if (attacker.damage > 0) {
+        const dealtDamage = Math.min(attacker.damage, prevHp);
+        registerDamage(state, t.team, dealtDamage);
+        registerDamageDealt(state, attacker.team, dealtDamage, isTowerTarget(t));
+      }
     });
   } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
     if (attacker.damage < 0) {
@@ -741,7 +777,9 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
     } else {
       const prevHp = actualTarget.hp;
       actualTarget.hp -= attacker.damage;
-      registerDamage(state, actualTarget.team, Math.min(attacker.damage, prevHp));
+      const dealtDamage = Math.min(attacker.damage, prevHp);
+      registerDamage(state, actualTarget.team, dealtDamage);
+      registerDamageDealt(state, attacker.team, dealtDamage, isTowerTarget(actualTarget));
     }
   }
 

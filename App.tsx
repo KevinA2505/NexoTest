@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction, AttackKind } from './types';
+import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction, AttackKind, GameMetrics } from './types';
 import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
@@ -12,6 +12,7 @@ import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
 import SpecialAbilityModal from './components/SpecialAbilityModal';
 import CardPreview from './components/CardPreview';
+import GameSummaryModal from './components/GameSummaryModal';
 
 const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
   const ability = SPECIAL_ABILITIES[Math.floor(Math.random() * SPECIAL_ABILITIES.length)];
@@ -55,6 +56,48 @@ const inferAttackKindFromCard = (card: Card): AttackKind => {
   return 'damage';
 };
 
+const createEmptyMetrics = (): GameMetrics => ({
+  totalDamage: {
+    [Team.PLAYER]: 0,
+    [Team.AI]: 0
+  },
+  towerDamage: {
+    [Team.PLAYER]: 0,
+    [Team.AI]: 0
+  },
+  totalCost: {
+    [Team.PLAYER]: 0,
+    [Team.AI]: 0
+  },
+  totalCardsPlayed: {
+    [Team.PLAYER]: 0,
+    [Team.AI]: 0
+  },
+  cardUsage: {
+    [Team.PLAYER]: {},
+    [Team.AI]: {}
+  }
+});
+
+const registerCardPlay = (metrics: GameMetrics, team: Team, cardId: string, cost: number): GameMetrics => ({
+  ...metrics,
+  totalCost: {
+    ...metrics.totalCost,
+    [team]: (metrics.totalCost[team] || 0) + cost
+  },
+  totalCardsPlayed: {
+    ...metrics.totalCardsPlayed,
+    [team]: (metrics.totalCardsPlayed[team] || 0) + 1
+  },
+  cardUsage: {
+    ...metrics.cardUsage,
+    [team]: {
+      ...metrics.cardUsage[team],
+      [cardId]: (metrics.cardUsage[team]?.[cardId] || 0) + 1
+    }
+  }
+});
+
 const App: React.FC = () => {
   const [specialAbility, setSpecialAbility] = useState<SelectedSpecialAbility>(() => {
     const defaultAbility = SPECIAL_ABILITIES[0];
@@ -94,7 +137,8 @@ const App: React.FC = () => {
       damageTaken: {
         [Team.PLAYER]: 0,
         [Team.AI]: 0
-      }
+      },
+      metrics: createEmptyMetrics()
     };
   });
 
@@ -108,6 +152,8 @@ const App: React.FC = () => {
   } | null>(null);
   const [arenaBounds, setArenaBounds] = useState<DOMRect | null>(null);
   const gameLoopRef = useRef<number>(undefined);
+  const statusRef = useRef(gameState.status);
+  const [isSummaryOpen, setIsSummaryOpen] = useState(false);
 
   const triggerCommanderAbility = () => {
     const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
@@ -252,7 +298,8 @@ const App: React.FC = () => {
           ...prev,
           playerEnergy: prev.playerEnergy - card.cost,
           playerHand: newHand,
-          playerDeck: newDeck
+          playerDeck: newDeck,
+          metrics: registerCardPlay(prev.metrics, Team.PLAYER, cardId, card.cost)
         };
       });
       setSelectedCardIdx(null);
@@ -342,7 +389,8 @@ const App: React.FC = () => {
             ...prev,
             aiEnergy: prev.aiEnergy - (card?.cost || 0),
             aiHand: newHand,
-            aiDeck: newDeck
+            aiDeck: newDeck,
+            metrics: card ? registerCardPlay(prev.metrics, Team.AI, cardId, card.cost) : prev.metrics
         };
     });
   };
@@ -398,6 +446,13 @@ const App: React.FC = () => {
     return () => cancelAnimationFrame(gameLoopRef.current!);
   }, [gameState.status]);
 
+  useEffect(() => {
+    if (statusRef.current === 'PLAYING' && ['VICTORY', 'DEFEAT', 'DRAW'].includes(gameState.status)) {
+      setIsSummaryOpen(true);
+    }
+    statusRef.current = gameState.status;
+  }, [gameState.status]);
+
   const startNewGame = (difficulty: number) => {
     aiController.reset();
     
@@ -430,6 +485,7 @@ const App: React.FC = () => {
         [Team.PLAYER]: 0,
         [Team.AI]: 0
       },
+      metrics: createEmptyMetrics(),
       arenaState: 'normal',
       arenaStateSince: 0,
       towers: [
@@ -437,6 +493,7 @@ const App: React.FC = () => {
         ...INITIAL_TOWERS_AI.map(t => ({ ...t, id: 'a-' + Math.random(), team: Team.AI, locked: false, isDead: false, maxHp: t.hp, lastAttack: 0, attackSpeed: 1100, shockwaveCooldown: 0 }))
       ],
     }));
+    setIsSummaryOpen(false);
   };
 
   const setStatus = (newStatus: GameState['status']) => {
@@ -708,6 +765,15 @@ const App: React.FC = () => {
             setSpecialAbility(selection);
             setIsAbilityModalOpen(false);
           }}
+        />
+      )}
+
+      {isSummaryOpen && (
+        <GameSummaryModal
+          status={gameState.status}
+          metrics={gameState.metrics}
+          playerSelection={gameState.playerSelection}
+          onClose={() => setIsSummaryOpen(false)}
         />
       )}
     </div>
