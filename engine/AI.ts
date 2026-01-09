@@ -1,6 +1,6 @@
 
 import { GameState, Team, Card, UnitType, TargetPreference, SelectedSpecialAbility, TowerType } from '../types';
-import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById, GAME_DURATION } from '../constants';
+import { CARD_BY_ID, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById, GAME_DURATION } from '../constants';
 
 interface PlayerPattern {
   topLaneDeployCount: number;
@@ -48,7 +48,7 @@ export class NexoAI {
         else this.playerPattern.bottomLaneDeployCount++;
 
         // Seguimiento de tipos
-        const card = CARD_LIBRARY.find(c => c.id === u.cardId);
+        const card = CARD_BY_ID.get(u.cardId);
         if (card) {
           if (card.type === UnitType.AIR) this.playerPattern.airUnitCount++;
           if (card.count > 3) this.playerPattern.swarmUnitCount++;
@@ -81,7 +81,7 @@ export class NexoAI {
       const playerOnAISide = playerUnits.filter(u => u.x > ARENA_WIDTH / 2);
       const clusteredPush = playerOnAISide.filter(u => Math.abs(u.y - ARENA_HEIGHT / 2) < 220);
       const heavyThreat = playerOnAISide.some(u => {
-        const card = CARD_LIBRARY.find(c => c.id === u.cardId);
+        const card = CARD_BY_ID.get(u.cardId);
         return card && (card.hp > 1200 || card.count > 3);
       });
 
@@ -94,7 +94,8 @@ export class NexoAI {
     if (ability.id === 'mothership_command') {
       if (aiHasMothership) return false;
       const hangarCardId = state.aiSpecialAbility.configuration.hangarUnit as string | undefined;
-      const hangarCard = CARD_LIBRARY.find(c => c.id === hangarCardId && c.type !== UnitType.SPELL);
+      const hangarCard = hangarCardId ? CARD_BY_ID.get(hangarCardId) : undefined;
+      if (hangarCard?.type === UnitType.SPELL) return false;
       if (!hangarCard) return false;
 
       const aiFrontline = aiUnits.filter(u => u.x > ARENA_WIDTH * 0.55);
@@ -134,7 +135,7 @@ export class NexoAI {
     const playerUnits = state.units.filter(u => u.team === Team.PLAYER && !u.isDead);
     
     const scoredHand = hand.map(cardId => {
-      const card = CARD_LIBRARY.find(c => c.id === cardId);
+      const card = CARD_BY_ID.get(cardId);
       if (!card || state.aiEnergy < card.cost) return { id: cardId, score: -1 };
 
       let score = 10; // Puntuación base
@@ -150,7 +151,7 @@ export class NexoAI {
 
         // Contra-enjambre
         const swarmThreats = playerUnits.filter(u => {
-          const c = CARD_LIBRARY.find(lib => lib.id === u.cardId);
+          const c = CARD_BY_ID.get(u.cardId);
           return c && c.count > 3;
         }).length;
         if (swarmThreats > 0 && card.isAoE) score += 50;
@@ -220,7 +221,7 @@ export class NexoAI {
     const bestCardChoice = this.evaluateBestCard(state);
     if (!bestCardChoice) return;
 
-    const card = CARD_LIBRARY.find(c => c.id === bestCardChoice.id);
+    const card = CARD_BY_ID.get(bestCardChoice.id);
     if (!card) return;
 
     // Verificar si puede costearlo respetando su reserva de dificultad

@@ -1407,6 +1407,8 @@ export const CARD_LIBRARY: Card[] = CARD_SEEDS.map(card => ({
     : undefined
 }));
 
+export const CARD_BY_ID = new Map(CARD_LIBRARY.map(card => [card.id, card]));
+
 export const PLAYABLE_CARD_LIBRARY = CARD_LIBRARY.filter(card => !card.hidden);
 
 export const CARD_DISTRIBUTION_SCHEMA = [

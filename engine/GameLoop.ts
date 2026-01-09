@@ -1,6 +1,6 @@
 
 import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, AttackKind, ProjectileStyle, VisualFamily, AlienSubtype } from '../types';
-import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
+import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_BY_ID, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 import { playSfx } from './audio';
 
@@ -207,7 +207,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   newState.pendingSpells = newState.pendingSpells.filter(ps => {
     ps.timer -= deltaTime;
     if (ps.timer <= 0) {
-      const card = CARD_LIBRARY.find(c => c.id === ps.cardId);
+      const card = CARD_BY_ID.get(ps.cardId);
       if (card) {
         if (card.id === 'healing_matrix') {
           // Si es la matriz de sanación, se convierte en un ActiveSpell tras el retraso inicial
@@ -289,7 +289,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     as.nextTick -= deltaTime;
 
     if (as.nextTick <= 0) {
-      const card = CARD_LIBRARY.find(c => c.id === as.cardId);
+      const card = CARD_BY_ID.get(as.cardId);
       if (card) {
         const allies = [...newState.units, ...newState.towers].filter(t => 
           !t.isDead && t.team === as.team && 
@@ -389,7 +389,10 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     }
 
     if (updatedUnit.isMothership && updatedUnit.payloadCardId) {
-      const payloadCard = CARD_LIBRARY.find(c => c.id === updatedUnit.payloadCardId && c.type !== UnitType.SPELL);
+      const payloadCard = updatedUnit.payloadCardId ? CARD_BY_ID.get(updatedUnit.payloadCardId) : undefined;
+      if (payloadCard?.type === UnitType.SPELL) {
+        updatedUnit.payloadSpawnTimer = undefined;
+      }
       const payloadInterval = getMothershipPayloadIntervalMs(payloadCard?.cost);
       updatedUnit.payloadSpawnTimer = (updatedUnit.payloadSpawnTimer ?? payloadInterval) - deltaTime;
 
@@ -492,8 +495,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
       });
 
       if (updatedUnit.splitOnDeath && updatedUnit.spawnChildId) {
-        const childCard = CARD_LIBRARY.find(c => c.id === updatedUnit.spawnChildId && c.type !== UnitType.SPELL);
-        if (childCard) {
+        const childCard = CARD_BY_ID.get(updatedUnit.spawnChildId);
+        if (childCard && childCard.type !== UnitType.SPELL) {
           const splitUnits = createUnitsFromCard(childCard.id, updatedUnit.team, updatedUnit.lane, updatedUnit.x, updatedUnit.y);
           spawnedUnits.push(...splitUnits);
         }
@@ -613,7 +616,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   });
 
   newState.projectiles = newState.projectiles.filter(p => {
-    const projectileCard = p.sourceCardId ? CARD_LIBRARY.find(c => c.id === p.sourceCardId) : undefined;
+    const projectileCard = p.sourceCardId ? CARD_BY_ID.get(p.sourceCardId) : undefined;
     const target = newState.units.find(u => u.id === p.targetId) || newState.towers.find(t => t.id === p.targetId);
     if (!target || target.hp <= 0) return false;
 

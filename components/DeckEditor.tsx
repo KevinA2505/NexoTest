@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
+import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_BY_ID, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
@@ -50,7 +50,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
     : ability.cooldown;
   const selectedAracnoModeKey = (selectedAbility.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
   const selectedAracnoCardId = ARACNO_MODE_TO_CARD[selectedAracnoModeKey] || ARACNO_MODE_TO_CARD[ARACNO_HIVE_ABILITY_BALANCE.defaultMode];
-  const selectedAracnoCard = CARD_LIBRARY.find(c => c.id === selectedAracnoCardId);
+  const selectedAracnoCard = CARD_BY_ID.get(selectedAracnoCardId);
   const selectedAracnoMode = ARACNO_SPIDER_MODES[selectedAracnoModeKey as keyof typeof ARACNO_SPIDER_MODES] || ARACNO_SPIDER_MODES[ARACNO_HIVE_ABILITY_BALANCE.defaultMode as keyof typeof ARACNO_SPIDER_MODES];
   const hiveSpawnIntervalSeconds = Math.ceil(ARACNO_HIVE_BALANCE.spawnIntervalMs / 1000);
   const renderAbilityConfigValue = (key: string, value: string | number | boolean) => {
