@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction, AttackKind, GameMetrics } from './types';
-import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE } from './constants';
+import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE, isMeleeSingleUnitCard } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
@@ -160,6 +160,7 @@ const App: React.FC = () => {
     const abilityCost = activeAbility.cost;
     if (gameState.commanderAbilityCooldown > 0 || gameState.status !== 'PLAYING') return;
     const selectedHangarCard = specialAbility.configuration.hangarUnit as string | undefined;
+    const selectedPilotCardId = specialAbility.configuration.pilotCard as string | undefined;
 
     setGameState(prev => {
       if (prev.playerEnergy < abilityCost || prev.commanderAbilityCooldown > 0 || prev.status !== 'PLAYING') return prev;
@@ -180,6 +181,11 @@ const App: React.FC = () => {
         if (hasActiveHive) return prev;
         const selectedMode = (specialAbility.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
         return applyAracnoAbility(prev, Team.PLAYER, selectedMode);
+      }
+
+      if (activeAbility.id === 'mecha_nexodo') {
+        const pilotCard = selectedPilotCardId ? CARD_LIBRARY.find(c => c.id === selectedPilotCardId) : undefined;
+        if (!pilotCard || !isMeleeSingleUnitCard(pilotCard)) return prev;
       }
 
       return prev;
@@ -422,6 +428,12 @@ const App: React.FC = () => {
         if (hasActiveHive) return prev;
         const selectedMode = (selection.configuration.mode as string) || ARACNO_HIVE_ABILITY_BALANCE.defaultMode;
         return applyAracnoAbility(prev, Team.AI, selectedMode);
+      }
+
+      if (selection.id === 'mecha_nexodo') {
+        const pilotCardId = selection.configuration.pilotCard as string | undefined;
+        const pilotCard = pilotCardId ? CARD_LIBRARY.find(c => c.id === pilotCardId) : undefined;
+        if (!pilotCard || !isMeleeSingleUnitCard(pilotCard)) return prev;
       }
 
       return prev;

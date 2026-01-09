@@ -1484,9 +1484,10 @@ export const MECHA_NEXODO_BALANCE = {
   frameColor: '#1d7eea'
 } as const;
 
-const MECHA_PILOT_CANDIDATES = PLAYABLE_CARD_LIBRARY.filter(card =>
-  card.type === UnitType.GROUND && card.projectileType === 'none' && card.count === 1
-);
+export const isMeleeSingleUnitCard = (card: Card) =>
+  card.type !== UnitType.SPELL && card.count === 1 && card.projectileType === 'none';
+
+const MECHA_PILOT_CANDIDATES = PLAYABLE_CARD_LIBRARY.filter(isMeleeSingleUnitCard);
 
 export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
   {
