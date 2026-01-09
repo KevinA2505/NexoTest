@@ -131,7 +131,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
   const isOvertime = timeRemaining <= 60;
   const wasOvertime = previousTimeRemaining <= 60;
   const multiplier = isOvertime ? 2 : 1;
-  const currentEnergyRate = BASE_ENERGY_GAIN_RATE * multiplier;
+  const deltaSeconds = deltaTime / 1000;
+  const currentEnergyGain = BASE_ENERGY_GAIN_RATE * multiplier * deltaSeconds;
 
   if (!wasOvertime && isOvertime && newState.arenaState === 'normal') {
     newState.arenaState = 'overtime_glitch';
@@ -139,8 +140,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     // Futuras variaciones de arena (clima/bioma) deberían activar aquí nuevos estados visuales sin tocar la lógica de unidades.
   }
 
-  newState.playerEnergy = Math.min(MAX_ENERGY, newState.playerEnergy + currentEnergyRate);
-  newState.aiEnergy = Math.min(MAX_ENERGY, newState.aiEnergy + currentEnergyRate);
+  newState.playerEnergy = Math.min(MAX_ENERGY, newState.playerEnergy + currentEnergyGain);
+  newState.aiEnergy = Math.min(MAX_ENERGY, newState.aiEnergy + currentEnergyGain);
 
   if (newState.commanderAbilityCooldown > 0) {
     newState.commanderAbilityCooldown = Math.max(0, newState.commanderAbilityCooldown - deltaTime);
