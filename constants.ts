@@ -1473,6 +1473,21 @@ export const ARACNO_HIVE_ABILITY_BALANCE = {
   defaultMode: 'lethal'
 } as const;
 
+export const MECHA_NEXODO_BALANCE = {
+  activationCost: 6,
+  extraHp: 720,
+  laserTickDamage: 52,
+  laserDurationMs: 5000,
+  laserCooldownMs: 5000,
+  laserColor: '#ff4bd8',
+  shieldColor: '#63d6ff',
+  frameColor: '#1d7eea'
+} as const;
+
+const MECHA_PILOT_CANDIDATES = PLAYABLE_CARD_LIBRARY.filter(card =>
+  card.type === UnitType.GROUND && card.projectileType === 'none' && card.count === 1
+);
+
 export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
   {
     id: 'emp_overwatch',
@@ -1524,6 +1539,39 @@ export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
             hint: c.description
           })),
         defaultValue: PLAYABLE_CARD_LIBRARY.find(c => c.type !== UnitType.SPELL)?.id
+      }
+    ]
+  },
+  {
+    id: 'mecha_nexodo',
+    name: 'Mecha Nexodo',
+    badge: 'Asalto',
+    description: 'Un mecha pilotado que alterna entre escudo brutal o un láser de daño constante.',
+    cost: MECHA_NEXODO_BALANCE.activationCost,
+    cooldown: Math.floor(MECHA_NEXODO_BALANCE.laserCooldownMs / 1000),
+    options: [
+      {
+        key: 'mode',
+        label: 'Modo de combate',
+        description: 'Define si prioriza supervivencia o presión constante.',
+        type: 'select',
+        choices: [
+          { value: 'shield', label: 'Escudo', hint: 'Refuerza el chasis con HP extra fijo y aguanta focos.' },
+          { value: 'laser', label: 'Láser', hint: 'Daño continuo por tick durante 5s con cooldown corto.' }
+        ],
+        defaultValue: 'shield'
+      },
+      {
+        key: 'pilotCard',
+        label: 'Piloto de mecha',
+        description: 'Carta melee individual que sincroniza el comportamiento del mecha.',
+        type: 'select',
+        choices: MECHA_PILOT_CANDIDATES.map(card => ({
+          value: card.id,
+          label: `${card.name} · ${card.cost}⚡`,
+          hint: card.description
+        })),
+        defaultValue: MECHA_PILOT_CANDIDATES[0]?.id
       }
     ]
   },
