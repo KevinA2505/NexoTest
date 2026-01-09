@@ -225,6 +225,21 @@ export interface GameState {
   suddenDeathActive: boolean;
   suddenDeathTimeExtensionMs: number;
   damageTaken: Record<Team, number>;
+  metrics: GameMetrics;
+}
+
+export interface GameMetrics {
+  totalDamage: Record<Team, number>;
+  towerDamage: Record<Team, number>;
+  totalCost: Record<Team, number>;
+  totalCardsPlayed: Record<Team, number>;
+  cardUsage: Record<Team, Record<string, number>>;
+}
+
+export interface ReplacementSuggestion {
+  cardId: string;
+  suggestedId: string;
+  reason: string;
 }
 
 export type SpecialAbilityOptionType = 'toggle' | 'slider' | 'select';

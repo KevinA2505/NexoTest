@@ -11,6 +11,13 @@ export const BRIDGE_TOP_Y = ARENA_HEIGHT / 2 - 190;
 export const BRIDGE_BOTTOM_Y = ARENA_HEIGHT / 2 + 190;
 export const BRIDGE_GAP_HALF = 100;
 
+export const POST_GAME_SUGGESTION_CONFIG = {
+  underusedThreshold: 1,
+  highAverageCost: 4.5,
+  maxSuggestions: 3,
+  cheaperCostBuffer: 1
+};
+
 type CardSeed = Omit<Card, 'visualFamily' | 'spellShape'> & Partial<Pick<Card, 'visualFamily' | 'spellShape'>>;
 
 const VISUAL_FAMILY_BY_FACTION: Record<Faction, VisualFamily> = {
