@@ -4,7 +4,8 @@ import { AlienSubtype, Card, Faction, TowerType, SpecialAbilityBlueprint, UnitTy
 export const ARENA_WIDTH = 1200;
 export const ARENA_HEIGHT = 675;
 export const MAX_ENERGY = 10;
-export const BASE_ENERGY_GAIN_RATE = 0.015;
+// Energía ganada por segundo (se multiplica por deltaTime en segundos).
+export const BASE_ENERGY_GAIN_RATE = 0.9;
 export const GAME_DURATION = 180; // 3 minutos en segundos
 export const BRIDGE_X = ARENA_WIDTH / 2;
 export const BRIDGE_TOP_Y = ARENA_HEIGHT / 2 - 190;
