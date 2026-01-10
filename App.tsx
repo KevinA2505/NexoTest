@@ -7,6 +7,7 @@ import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
 import { applyAracnoAbility } from './engine/abilities/aracno';
 import { applyMothershipAbility, getMothershipCooldownMs, getMothershipPayloadIntervalMs } from './engine/abilities/mothership';
+import { applyMechaNexodoAbility } from './engine/abilities/mecha_nexodo';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
@@ -185,8 +186,10 @@ const App: React.FC = () => {
       }
 
       if (activeAbility.id === 'mecha_nexodo') {
+        const selectedMode = specialAbility.configuration.mode as string | undefined;
         const pilotCard = selectedPilotCardId ? CARD_LIBRARY.find(c => c.id === selectedPilotCardId) : undefined;
         if (!pilotCard || !isMeleeSingleUnitCard(pilotCard)) return prev;
+        return applyMechaNexodoAbility(prev, Team.PLAYER, selectedPilotCardId, selectedMode);
       }
 
       return prev;
@@ -432,9 +435,11 @@ const App: React.FC = () => {
       }
 
       if (selection.id === 'mecha_nexodo') {
+        const selectedMode = selection.configuration.mode as string | undefined;
         const pilotCardId = selection.configuration.pilotCard as string | undefined;
         const pilotCard = pilotCardId ? CARD_LIBRARY.find(c => c.id === pilotCardId) : undefined;
         if (!pilotCard || !isMeleeSingleUnitCard(pilotCard)) return prev;
+        return applyMechaNexodoAbility(prev, Team.AI, pilotCardId, selectedMode);
       }
 
       return prev;
