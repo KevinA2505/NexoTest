@@ -154,6 +154,7 @@ const App: React.FC = () => {
   const gameLoopRef = useRef<number>(undefined);
   const statusRef = useRef(gameState.status);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
+  const abilityHotkeyLabel = 'Espacio';
 
   const triggerCommanderAbility = () => {
     const activeAbility = findAbilityById(specialAbility.id) || SPECIAL_ABILITIES[0];
@@ -543,6 +544,44 @@ const App: React.FC = () => {
   const abilityEditingLocked = gameState.status === 'PLAYING';
   const isDeckEditorOpen = gameState.status === 'DECK_EDITOR';
 
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) return false;
+      const tagName = target.tagName.toLowerCase();
+      return (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        target.isContentEditable
+      );
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (gameState.status !== 'PLAYING') return;
+      if (isEditableTarget(event.target)) return;
+
+      const keyIndex = Number.parseInt(event.key, 10);
+      if (!Number.isNaN(keyIndex) && keyIndex >= 1 && keyIndex <= 4) {
+        const cardIdx = keyIndex - 1;
+        const cardId = gameState.playerHand[cardIdx];
+        const card = cardId ? CARD_LIBRARY.find(c => c.id === cardId) : undefined;
+        const canAfford = card ? gameState.playerEnergy >= card.cost : false;
+        if (!card || !canAfford) return;
+        setSelectedCardIdx(prev => (prev === cardIdx ? null : cardIdx));
+        return;
+      }
+
+      if (event.code === 'Space') {
+        event.preventDefault();
+        if (!abilityReady) return;
+        triggerCommanderAbility();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [gameState.status, gameState.playerEnergy, gameState.playerHand, abilityReady, triggerCommanderAbility]);
+
   return (
     <div className={`min-h-screen flex bg-[#010101] overflow-hidden select-none font-mono text-white ${isDeckEditorOpen ? 'app-overlay-locked' : ''}`}>
       <div className="w-48 h-screen bg-[#050505] border-r border-[#1a3a5a] flex flex-col p-4 shadow-[5px_0_30px_rgba(0,0,0,0.5)] z-30 overflow-y-auto scrollbar-hide">
@@ -572,6 +611,7 @@ const App: React.FC = () => {
               >
                 <div className="flex justify-between items-start">
                   <span className="text-[9px] text-[#00ccff] font-bold uppercase tracking-tighter leading-tight max-w-[80%]">{card?.name}</span>
+                  <span className="text-[8px] text-white/50 font-bold border border-white/10 rounded px-1 py-0.5">{idx + 1}</span>
                 </div>
 
                 <CardPreview
@@ -620,6 +660,7 @@ const App: React.FC = () => {
                 >
                     <span className="text-[10px] font-black uppercase tracking-widest">TAC-PULSE</span>
                     <span className="text-[8px] mt-1">Coste: {abilityCost}⚡</span>
+                    <span className="text-[7px] mt-1 uppercase tracking-widest text-white/60">Atajo: {abilityHotkeyLabel}</span>
                     {activeAbility.id === 'emp_overwatch' && (
                       <span className="text-[8px] text-[#00ccff] mt-1 text-center leading-tight">
                         {currentEmpMode.label}
