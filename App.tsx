@@ -537,6 +537,10 @@ const App: React.FC = () => {
   const abilityCost = activeAbility.cost;
   const selectedHangarCardId = specialAbility.configuration.hangarUnit as string | undefined;
   const selectedHangarCard = PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedHangarCardId && c.type !== UnitType.SPELL);
+  const selectedPilotCardId = specialAbility.configuration.pilotCard as string | undefined;
+  const selectedPilotCard = selectedPilotCardId ? PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedPilotCardId) : undefined;
+  const mechaMode = (specialAbility.configuration.mode as string) || 'shield';
+  const mechaModeLabel = mechaMode === 'laser' ? 'Láser' : 'Escudo';
   const playerHasMothership = gameState.units.some(u => u.team === Team.PLAYER && u.isMothership && !u.isDead);
   const playerHasAracnoHive = gameState.units.some(u => u.cardId === 'aracno_hive' && u.team === Team.PLAYER && !u.isDead);
   const abilityReady = gameState.playerEnergy >= abilityCost
@@ -685,7 +689,9 @@ const App: React.FC = () => {
                     ? `${currentEmpMode.stunDuration / 1000}s + ${currentEmpMode.damage || '0'} daño en radio ${EMP_ABILITY_BALANCE.radius}`
                     : activeAbility.id === 'mothership_command'
                       ? `Nave con ${selectedHangarCard ? selectedHangarCard.name : 'carga pendiente'} · CD fijo ${currentMothershipCooldown}s · Genera carga cada ${currentMothershipPayloadInterval}s`
-                      : activeAbility.description}
+                      : activeAbility.id === 'mecha_nexodo'
+                        ? `Mecha Nexodo · Modo ${mechaModeLabel} · Piloto ${selectedPilotCard?.name || 'pendiente'} · Coste ${abilityCost}⚡`
+                        : activeAbility.description}
                 </p>
             </div>
         )}

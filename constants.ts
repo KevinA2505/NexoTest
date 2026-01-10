@@ -1558,8 +1558,8 @@ export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
         description: 'Define si prioriza supervivencia o presión constante.',
         type: 'select',
         choices: [
-          { value: 'shield', label: 'Escudo', hint: 'Refuerza el chasis con HP extra fijo y aguanta focos.' },
-          { value: 'laser', label: 'Láser', hint: 'Daño continuo por tick durante 5s con cooldown corto.' }
+          { value: 'shield', label: 'Escudo', hint: `Blindaje pesado: +${MECHA_NEXODO_BALANCE.extraHp} HP fijos para absorber focus.` },
+          { value: 'laser', label: 'Láser', hint: `Rayo continuo: ${MECHA_NEXODO_BALANCE.laserTickDamage} daño/tick durante ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s (CD ${MECHA_NEXODO_BALANCE.laserCooldownMs / 1000}s).` }
         ],
         defaultValue: 'shield'
       },
