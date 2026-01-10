@@ -1,6 +1,6 @@
 
 import { GameState, Team, Card, UnitType, TargetPreference, SelectedSpecialAbility, TowerType } from '../types';
-import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById, GAME_DURATION } from '../constants';
+import { CARD_LIBRARY, ARENA_WIDTH, MAX_ENERGY, ARENA_HEIGHT, findAbilityById, GAME_DURATION, isMeleeSingleUnitCard } from '../constants';
 
 interface PlayerPattern {
   topLaneDeployCount: number;
@@ -104,6 +104,39 @@ export class NexoAI {
 
       if (hasEnergyToCommit && (aiUnits.length < playerUnits.length || aiIsBehind || state.aiEnergy > MAX_ENERGY * 0.8)) {
         onAbility(state.aiSpecialAbility);
+        return true;
+      }
+    }
+
+    if (ability.id === 'mecha_nexodo') {
+      const aiHasMecha = state.units.some(u => u.team === Team.AI && u.isMecha && !u.isDead);
+      if (aiHasMecha) return false;
+
+      const pilotCandidates = state.aiDeck
+        .map(cardId => CARD_LIBRARY.find(c => c.id === cardId))
+        .filter((card): card is Card => Boolean(card) && isMeleeSingleUnitCard(card));
+      if (pilotCandidates.length === 0) return false;
+
+      const pilotCard = pilotCandidates.sort((a, b) => (b.hp + b.damage) - (a.hp + a.damage))[0];
+      const hasEnergyToCommit = state.aiEnergy >= ability.cost + Math.max(0, pilotCard.cost - 2);
+      if (!hasEnergyToCommit) return false;
+
+      const aiKing = state.towers.find(t => t.team === Team.AI && t.type === TowerType.KING);
+      const enemyPressureNearKing = aiKing
+        ? playerUnits.some(u => Math.hypot(u.x - aiKing.x, u.y - aiKing.y) < 260)
+        : false;
+      const highHpTarget = playerUnits.some(u => u.maxHp > 1500 || u.hp > 1500);
+      const chosenMode = enemyPressureNearKing ? 'shield' : (highHpTarget ? 'laser' : 'shield');
+
+      if (enemyPressureNearKing || highHpTarget || state.aiEnergy > MAX_ENERGY * 0.85) {
+        onAbility({
+          ...state.aiSpecialAbility,
+          configuration: {
+            ...state.aiSpecialAbility.configuration,
+            mode: chosenMode,
+            pilotCard: pilotCard.id
+          }
+        });
         return true;
       }
     }
