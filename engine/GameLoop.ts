@@ -437,48 +437,45 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     if (updatedUnit.isMecha && updatedUnit.mechaMode === 'laser') {
       if ((updatedUnit.mechaLaserActiveMs ?? 0) > 0) {
         updatedUnit.mechaLaserActiveMs = Math.max(0, (updatedUnit.mechaLaserActiveMs ?? 0) - deltaTime);
-        updatedUnit.mechaLaserTickMs = (updatedUnit.mechaLaserTickMs ?? 0) - deltaTime;
+        const laserTarget = findEnemyTarget(updatedUnit, newState);
+        if (laserTarget) {
+          const laserTargetEntity = newState.units.find(u => u.id === laserTarget.id) || newState.towers.find(t => t.id === laserTarget.id);
+          const dist = Math.hypot(laserTarget.x - updatedUnit.x, laserTarget.y - updatedUnit.y);
 
-        if ((updatedUnit.mechaLaserTickMs ?? 0) <= 0) {
-          const laserTarget = findEnemyTarget(updatedUnit, newState);
-          if (laserTarget) {
-            const laserTargetEntity = newState.units.find(u => u.id === laserTarget.id) || newState.towers.find(t => t.id === laserTarget.id);
-            const dist = Math.hypot(laserTarget.x - updatedUnit.x, laserTarget.y - updatedUnit.y);
+          if (laserTargetEntity && dist <= updatedUnit.range) {
+            const damagePerMs = MECHA_NEXODO_BALANCE.laserTotalDamage / MECHA_NEXODO_BALANCE.laserDurationMs;
+            const damageThisFrame = damagePerMs * deltaTime;
 
-            if (laserTargetEntity && dist <= updatedUnit.range) {
-              if ('stunTimer' in laserTargetEntity) {
-                const { totalDamage } = applyDamageToUnit(laserTargetEntity as GameUnit, MECHA_NEXODO_BALANCE.laserTickDamage);
-                registerDamage(newState, laserTargetEntity.team, totalDamage);
-                registerDamageDealt(newState, updatedUnit.team, totalDamage, false);
-              } else {
-                const prevHp = laserTargetEntity.hp;
-                laserTargetEntity.hp -= MECHA_NEXODO_BALANCE.laserTickDamage;
-                const dealtDamage = Math.min(MECHA_NEXODO_BALANCE.laserTickDamage, prevHp);
-                registerDamage(newState, laserTargetEntity.team, dealtDamage);
-                registerDamageDealt(newState, updatedUnit.team, dealtDamage, true);
-              }
-
-              addEffect(newState, {
-                id: 'mecha-laser-' + Math.random(),
-                x: laserTarget.x,
-                y: laserTarget.y,
-                startX: updatedUnit.x,
-                startY: updatedUnit.y,
-                type: 'laser_beam',
-                timer: 200,
-                maxTimer: 200,
-                color: MECHA_NEXODO_BALANCE.laserColor,
-                sourceFaction: updatedUnit.faction,
-                sourceStyle: 'beam',
-                sourceAlienSubtype: updatedUnit.alienSubtype,
-                sourceVisualFamily: updatedUnit.visualFamily,
-                sourceCardId: updatedUnit.cardId,
-                attackKind: 'laser'
-              });
+            if ('stunTimer' in laserTargetEntity) {
+              const { totalDamage } = applyDamageToUnit(laserTargetEntity as GameUnit, damageThisFrame);
+              registerDamage(newState, laserTargetEntity.team, totalDamage);
+              registerDamageDealt(newState, updatedUnit.team, totalDamage, false);
+            } else {
+              const prevHp = laserTargetEntity.hp;
+              laserTargetEntity.hp -= damageThisFrame;
+              const dealtDamage = Math.min(damageThisFrame, prevHp);
+              registerDamage(newState, laserTargetEntity.team, dealtDamage);
+              registerDamageDealt(newState, updatedUnit.team, dealtDamage, true);
             }
-          }
 
-          updatedUnit.mechaLaserTickMs = 1000;
+            addEffect(newState, {
+              id: 'mecha-laser-' + Math.random(),
+              x: laserTarget.x,
+              y: laserTarget.y,
+              startX: updatedUnit.x,
+              startY: updatedUnit.y,
+              type: 'laser_beam',
+              timer: 200,
+              maxTimer: 200,
+              color: MECHA_NEXODO_BALANCE.laserColor,
+              sourceFaction: updatedUnit.faction,
+              sourceStyle: 'beam',
+              sourceAlienSubtype: updatedUnit.alienSubtype,
+              sourceVisualFamily: updatedUnit.visualFamily,
+              sourceCardId: updatedUnit.cardId,
+              attackKind: 'laser'
+            });
+          }
         }
 
         if ((updatedUnit.mechaLaserActiveMs ?? 0) === 0) {
@@ -491,7 +488,6 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
 
         if ((updatedUnit.mechaLaserCooldownMs ?? 0) <= 0) {
           updatedUnit.mechaLaserActiveMs = MECHA_NEXODO_BALANCE.laserDurationMs;
-          updatedUnit.mechaLaserTickMs = 0;
         }
       }
     }

@@ -1477,7 +1477,7 @@ export const ARACNO_HIVE_ABILITY_BALANCE = {
 export const MECHA_NEXODO_BALANCE = {
   activationCost: 6,
   extraHp: 720,
-  laserTickDamage: 52,
+  laserTotalDamage: 260,
   laserDurationMs: 5000,
   laserCooldownMs: 5000,
   laserColor: '#ff4bd8',
@@ -1559,7 +1559,7 @@ export const SPECIAL_ABILITIES: SpecialAbilityBlueprint[] = [
         type: 'select',
         choices: [
           { value: 'shield', label: 'Escudo', hint: `Blindaje pesado: +${MECHA_NEXODO_BALANCE.extraHp} HP fijos para absorber focus.` },
-          { value: 'laser', label: 'Láser', hint: `Rayo continuo: ${MECHA_NEXODO_BALANCE.laserTickDamage} daño/tick durante ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s (CD ${MECHA_NEXODO_BALANCE.laserCooldownMs / 1000}s).` }
+          { value: 'laser', label: 'Láser', hint: `Rayo continuo: ${MECHA_NEXODO_BALANCE.laserTotalDamage} daño total (${MECHA_NEXODO_BALANCE.laserTotalDamage / (MECHA_NEXODO_BALANCE.laserDurationMs / 1000)} DPS) durante ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s (CD ${MECHA_NEXODO_BALANCE.laserCooldownMs / 1000}s).` }
         ],
         defaultValue: 'shield'
       },

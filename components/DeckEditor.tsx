@@ -75,7 +75,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
       return `${card?.name || 'Araña'} · HP ${selectedAracnoMode.hp} · Daño ${selectedAracnoMode.damage} · Alcance ${selectedAracnoMode.range} · Spawn ${hiveSpawnIntervalSeconds}s · Decae ${Math.round(ARACNO_HIVE_BALANCE.decayPerSecond)} HP/s`;
     }
     if (ability.id === 'mecha_nexodo' && key === 'mode') {
-      return `${mechaModeLabel} · ${selectedMechaMode === 'laser' ? `${MECHA_NEXODO_BALANCE.laserTickDamage} dmg/tick ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s` : `+${MECHA_NEXODO_BALANCE.extraHp} HP`}`;
+      return `${mechaModeLabel} · ${selectedMechaMode === 'laser' ? `${MECHA_NEXODO_BALANCE.laserTotalDamage} dmg total (${MECHA_NEXODO_BALANCE.laserTotalDamage / (MECHA_NEXODO_BALANCE.laserDurationMs / 1000)} DPS) ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s` : `+${MECHA_NEXODO_BALANCE.extraHp} HP`}`;
     }
     if (ability.id === 'mecha_nexodo' && key === 'pilotCard') {
       if (!selectedMechaPilot || !isValidMechaPilot) return 'Sin piloto válido';
@@ -149,7 +149,7 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
                       <span className="px-2 py-1 border border-white/10 rounded">Coste {MECHA_NEXODO_BALANCE.activationCost}⚡</span>
                       <span className="px-2 py-1 border border-white/10 rounded">
                         {selectedMechaMode === 'laser'
-                          ? `Láser ${MECHA_NEXODO_BALANCE.laserTickDamage} dmg/tick`
+                          ? `Láser ${MECHA_NEXODO_BALANCE.laserTotalDamage} dmg total (${MECHA_NEXODO_BALANCE.laserTotalDamage / (MECHA_NEXODO_BALANCE.laserDurationMs / 1000)} DPS)`
                           : `Escudo +${MECHA_NEXODO_BALANCE.extraHp} HP`}
                       </span>
                       {!isValidMechaPilot && (
