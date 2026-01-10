@@ -71,6 +71,7 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
 
     if (unit.isMecha && unit.mechaMode === 'shield' && (unit.mechaHp ?? 0) > 0) {
       const pulse = 0.6 + Math.sin(Date.now() / 180) * 0.4;
+      const orbitRadius = size + 12 + pulse * 3;
       ctx.save();
       ctx.strokeStyle = MECHA_NEXODO_BALANCE.shieldColor;
       ctx.lineWidth = 2 + pulse * 1.5;
@@ -78,9 +79,19 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
       ctx.shadowColor = MECHA_NEXODO_BALANCE.shieldColor;
       ctx.setLineDash([6, 4]);
       ctx.beginPath();
-      ctx.arc(0, 0, size + 10 + pulse * 3, 0, Math.PI * 2);
+      ctx.arc(0, 0, orbitRadius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
+      const orbitCount = 6;
+      for (let i = 0; i < orbitCount; i++) {
+        const angle = Date.now() / 500 + (i * Math.PI * 2) / orbitCount;
+        const ox = Math.cos(angle) * orbitRadius;
+        const oy = Math.sin(angle) * orbitRadius;
+        ctx.beginPath();
+        ctx.fillStyle = `${MECHA_NEXODO_BALANCE.shieldColor}cc`;
+        ctx.arc(ox, oy, 2 + pulse, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -357,6 +368,28 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
       drawAlienSilhouette();
     } else {
       drawHumanoidSilhouette();
+    }
+
+    if (unit.isMecha) {
+      ctx.save();
+      ctx.strokeStyle = MECHA_NEXODO_BALANCE.frameColor;
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 16;
+      ctx.shadowColor = MECHA_NEXODO_BALANCE.frameColor;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i;
+        const hx = (size + 6) * Math.cos(angle);
+        const hy = (size + 6) * Math.sin(angle);
+        if (i === 0) {
+          ctx.moveTo(hx, hy);
+        } else {
+          ctx.lineTo(hx, hy);
+        }
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
     }
 
     ctx.beginPath();
@@ -869,7 +902,7 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     state.units.forEach(unit => {
       if (unit.isDead) return;
       drawUnit(ctx, unit);
-      drawHPBar(ctx, unit.x, unit.y - 25, 28, unit.hp, unit.maxHp);
+      drawHPBar(ctx, unit.x, unit.y - 25, 28, unit.hp, unit.maxHp, unit.mechaHp ?? 0, unit.mechaMaxHp ?? 0);
       if (unit.stunTimer > 0) {
         ctx.save(); ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2; ctx.setLineDash([3, 3]);
         ctx.beginPath(); ctx.arc(unit.x, unit.y, 18, Date.now()/100, Date.now()/100 + Math.PI * 1.5); ctx.stroke();
@@ -1044,17 +1077,37 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
     }
   };
 
-  const drawHPBar = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, hp: number, max: number) => {
+  const drawHPBar = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    hp: number,
+    max: number,
+    mechaHp = 0,
+    mechaMaxHp = 0
+  ) => {
     ctx.save();
     ctx.fillStyle = '#0a0a0a'; 
     ctx.fillRect(x - w / 2, y, w, 5);
-    const ratio = Math.max(0, hp / max);
-    const grad = ctx.createLinearGradient(x - w/2, 0, x + w/2, 0);
-    if (ratio > 0.5) { grad.addColorStop(0, '#00ffcc'); grad.addColorStop(1, '#00ccff'); } 
-    else if (ratio > 0.2) { grad.addColorStop(0, '#ffcc00'); grad.addColorStop(1, '#ffaa00'); } 
-    else { grad.addColorStop(0, '#ff3366'); grad.addColorStop(1, '#ff0000'); }
-    ctx.fillStyle = grad;
-    ctx.fillRect(x - w / 2, y, w * ratio, 5);
+    const baseRatio = Math.max(0, hp / max);
+    const baseGrad = ctx.createLinearGradient(x - w / 2, 0, x + w / 2, 0);
+    if (baseRatio > 0.5) { baseGrad.addColorStop(0, '#00ffcc'); baseGrad.addColorStop(1, '#00ccff'); } 
+    else if (baseRatio > 0.2) { baseGrad.addColorStop(0, '#ffcc00'); baseGrad.addColorStop(1, '#ffaa00'); } 
+    else { baseGrad.addColorStop(0, '#ff3366'); baseGrad.addColorStop(1, '#ff0000'); }
+    const totalMax = max + Math.max(0, mechaMaxHp);
+    if (mechaMaxHp > 0 && totalMax > 0) {
+      const baseWidth = w * (max / totalMax);
+      const mechaWidth = w - baseWidth;
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(x - w / 2, y, baseWidth * baseRatio, 5);
+      const mechaRatio = Math.max(0, mechaHp / mechaMaxHp);
+      ctx.fillStyle = MECHA_NEXODO_BALANCE.shieldColor;
+      ctx.fillRect(x - w / 2 + baseWidth, y, mechaWidth * mechaRatio, 5);
+    } else {
+      ctx.fillStyle = baseGrad;
+      ctx.fillRect(x - w / 2, y, w * baseRatio, 5);
+    }
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x - w / 2, y, w, 5);
