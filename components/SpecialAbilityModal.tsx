@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById } from '../constants';
+import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, MECHA_NEXODO_BALANCE, MOTHERSHIP_BALANCE, MOTHERSHIP_HP, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, isMeleeSingleUnitCard } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
@@ -63,6 +63,20 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
   const selectedAracnoCard = CARD_LIBRARY.find(c => c.id === selectedAracnoCardId);
   const selectedAracnoMode = ARACNO_SPIDER_MODES[selectedAracnoModeKey as keyof typeof ARACNO_SPIDER_MODES] || ARACNO_SPIDER_MODES[ARACNO_HIVE_ABILITY_BALANCE.defaultMode as keyof typeof ARACNO_SPIDER_MODES];
   const hiveSpawnIntervalSeconds = Math.ceil(ARACNO_HIVE_BALANCE.spawnIntervalMs / 1000);
+  const selectedMechaModeKey = (currentConfig.mode as string) || 'shield';
+  const selectedMechaPilotId = currentConfig.pilotCard as string | undefined;
+  const selectedMechaPilot = selectedMechaPilotId ? PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedMechaPilotId) : undefined;
+  const hasValidMechaPilot = selectedMechaPilot ? isMeleeSingleUnitCard(selectedMechaPilot) : false;
+  const MECHA_MODE_DETAILS: Record<string, { label: string; hint: string }> = {
+    shield: {
+      label: 'Escudo',
+      hint: `Blindaje pesado con +${MECHA_NEXODO_BALANCE.extraHp} HP fijos para absorber focus enemigo.`
+    },
+    laser: {
+      label: 'Láser',
+      hint: `Rayo continuo de ${MECHA_NEXODO_BALANCE.laserTickDamage} daño/tick durante ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s (CD ${MECHA_NEXODO_BALANCE.laserCooldownMs / 1000}s).`
+    }
+  };
 
   const renderOption = (optionKey: string) => {
     const option = selectedAbility.options.find(o => o.key === optionKey);
@@ -295,6 +309,42 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                       <span className="px-2 py-1 border border-white/10 rounded">Objetivo {selectedAracnoMode.targetPref}</span>
                       {selectedAracnoModeKey === 'kamikaze' && (
                         <span className="px-2 py-1 border border-white/10 rounded">DOT {ARACNO_SPIDER_MODES.kamikaze.dotDuration / 1000}s</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {selectedAbility.id === 'mecha_nexodo' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+                <div className="p-3 border border-[#00ccff]/30 bg-[#00ccff]/5 rounded">
+                  <div className="text-[10px] uppercase text-white/50">Chasis</div>
+                  <div className="text-xl font-black text-[#00ccff]">Mecha Nexodo</div>
+                  <div className="text-[10px] uppercase text-white/50">HP extra</div>
+                  <div className="text-sm font-bold text-white">+{MECHA_NEXODO_BALANCE.extraHp}</div>
+                  <div className="text-[10px] uppercase text-white/50">Láser</div>
+                  <div className="text-sm font-bold text-white">{MECHA_NEXODO_BALANCE.laserTickDamage} daño/tick</div>
+                </div>
+                <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2 flex gap-3 items-center">
+                  {selectedMechaPilot ? (
+                    <CardPreview card={selectedMechaPilot} selected size="md" />
+                  ) : (
+                    <div className="h-20 w-20 border border-dashed border-white/20 rounded flex items-center justify-center text-[9px] text-white/40 uppercase">
+                      Sin piloto
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <div className="text-[10px] uppercase text-white/50">Modo seleccionado</div>
+                    <div className="text-lg font-black text-white">{MECHA_MODE_DETAILS[selectedMechaModeKey]?.label || 'Escudo'}</div>
+                    <p className="text-[10px] text-white/60 uppercase tracking-wider">
+                      {MECHA_MODE_DETAILS[selectedMechaModeKey]?.hint || 'Selecciona un modo de combate.'}
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-2 text-[10px] text-white/70">
+                      <span className="px-2 py-1 border border-white/10 rounded">CD {Math.floor(MECHA_NEXODO_BALANCE.laserCooldownMs / 1000)}s</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Duración {Math.floor(MECHA_NEXODO_BALANCE.laserDurationMs / 1000)}s</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">Coste {MECHA_NEXODO_BALANCE.activationCost}⚡</span>
+                      {!hasValidMechaPilot && (
+                        <span className="px-2 py-1 border border-red-400/40 text-red-300 rounded">Piloto melee individual requerido</span>
                       )}
                     </div>
                   </div>

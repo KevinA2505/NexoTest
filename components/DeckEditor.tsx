@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById } from '../constants';
+import { ARACNO_HIVE_ABILITY_BALANCE, ARACNO_HIVE_BALANCE, ARACNO_SPIDER_MODES, CARD_LIBRARY, EMP_ABILITY_BALANCE, MECHA_NEXODO_BALANCE, PLAYABLE_CARD_LIBRARY, SPECIAL_ABILITIES, findAbilityById, isMeleeSingleUnitCard } from '../constants';
 import { SelectedSpecialAbility, UnitType } from '../types';
 import { getEmpModeConfig } from '../engine/abilities/emp';
 import { getMothershipCooldownMs, getMothershipPayloadIntervalMs } from '../engine/abilities/mothership';
@@ -53,6 +53,11 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
   const selectedAracnoCard = CARD_LIBRARY.find(c => c.id === selectedAracnoCardId);
   const selectedAracnoMode = ARACNO_SPIDER_MODES[selectedAracnoModeKey as keyof typeof ARACNO_SPIDER_MODES] || ARACNO_SPIDER_MODES[ARACNO_HIVE_ABILITY_BALANCE.defaultMode as keyof typeof ARACNO_SPIDER_MODES];
   const hiveSpawnIntervalSeconds = Math.ceil(ARACNO_HIVE_BALANCE.spawnIntervalMs / 1000);
+  const selectedMechaMode = (selectedAbility.configuration.mode as string) || 'shield';
+  const selectedMechaPilotId = selectedAbility.configuration.pilotCard as string | undefined;
+  const selectedMechaPilot = selectedMechaPilotId ? PLAYABLE_CARD_LIBRARY.find(c => c.id === selectedMechaPilotId) : undefined;
+  const isValidMechaPilot = selectedMechaPilot ? isMeleeSingleUnitCard(selectedMechaPilot) : false;
+  const mechaModeLabel = selectedMechaMode === 'laser' ? 'Láser' : 'Escudo';
   const renderAbilityConfigValue = (key: string, value: string | number | boolean) => {
     if (ability.id === 'emp_overwatch' && key === 'mode') {
       const mode = getEmpModeConfig(String(value));
@@ -68,6 +73,13 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
     if (ability.id === 'aracno_hive' && key === 'mode') {
       const card = selectedAracnoCard;
       return `${card?.name || 'Araña'} · HP ${selectedAracnoMode.hp} · Daño ${selectedAracnoMode.damage} · Alcance ${selectedAracnoMode.range} · Spawn ${hiveSpawnIntervalSeconds}s · Decae ${Math.round(ARACNO_HIVE_BALANCE.decayPerSecond)} HP/s`;
+    }
+    if (ability.id === 'mecha_nexodo' && key === 'mode') {
+      return `${mechaModeLabel} · ${selectedMechaMode === 'laser' ? `${MECHA_NEXODO_BALANCE.laserTickDamage} dmg/tick ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s` : `+${MECHA_NEXODO_BALANCE.extraHp} HP`}`;
+    }
+    if (ability.id === 'mecha_nexodo' && key === 'pilotCard') {
+      if (!selectedMechaPilot || !isValidMechaPilot) return 'Sin piloto válido';
+      return `${selectedMechaPilot.name} · ${selectedMechaPilot.cost}⚡`;
     }
     return String(value);
   };
@@ -121,6 +133,34 @@ const DeckEditor: React.FC<DeckEditorProps> = ({ selection, onUpdate, onClose, o
                   );
                 })}
               </div>
+              {ability.id === 'mecha_nexodo' && (
+                <div className="mt-3 p-3 border border-white/10 rounded bg-black/30 flex gap-3 items-center">
+                  {selectedMechaPilot ? (
+                    <CardPreview card={selectedMechaPilot} selected hovered={hoveredCardId === selectedMechaPilot.id} size="sm" />
+                  ) : (
+                    <div className="h-12 w-12 border border-dashed border-white/20 rounded flex items-center justify-center text-[9px] text-white/40 uppercase">
+                      Pilot
+                    </div>
+                  )}
+                  <div className="flex-1 flex flex-col gap-1">
+                    <div className="text-[10px] uppercase text-white/60">Modo · {mechaModeLabel}</div>
+                    <div className="text-sm font-black text-white">{selectedMechaPilot?.name || 'Piloto pendiente'}</div>
+                    <div className="flex flex-wrap gap-2 text-[9px] text-white/60 uppercase tracking-wide">
+                      <span className="px-2 py-1 border border-white/10 rounded">Coste {MECHA_NEXODO_BALANCE.activationCost}⚡</span>
+                      <span className="px-2 py-1 border border-white/10 rounded">
+                        {selectedMechaMode === 'laser'
+                          ? `Láser ${MECHA_NEXODO_BALANCE.laserTickDamage} dmg/tick`
+                          : `Escudo +${MECHA_NEXODO_BALANCE.extraHp} HP`}
+                      </span>
+                      {!isValidMechaPilot && (
+                        <span className="px-2 py-1 border border-red-400/40 text-red-300 rounded">
+                          Falta piloto melee individual válido
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
               {ability.id === 'aracno_hive' && selectedAracnoCard && (
                 <div className="mt-3 p-3 border border-white/10 rounded bg-black/30 flex gap-3 items-center">
                   <CardPreview card={selectedAracnoCard} selected hovered={hoveredCardId === selectedAracnoCard.id} size="sm" />
