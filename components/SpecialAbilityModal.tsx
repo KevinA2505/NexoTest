@@ -74,7 +74,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
     },
     laser: {
       label: 'Láser',
-      hint: `Rayo continuo de ${MECHA_NEXODO_BALANCE.laserTickDamage} daño/tick durante ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s (CD ${MECHA_NEXODO_BALANCE.laserCooldownMs / 1000}s).`
+      hint: `Rayo continuo de ${MECHA_NEXODO_BALANCE.laserTotalDamage} daño total (${MECHA_NEXODO_BALANCE.laserTotalDamage / (MECHA_NEXODO_BALANCE.laserDurationMs / 1000)} DPS) durante ${MECHA_NEXODO_BALANCE.laserDurationMs / 1000}s (CD ${MECHA_NEXODO_BALANCE.laserCooldownMs / 1000}s).`
     }
   };
 
@@ -323,7 +323,7 @@ const SpecialAbilityModal: React.FC<SpecialAbilityModalProps> = ({ initialSelect
                   <div className="text-[10px] uppercase text-white/50">HP extra</div>
                   <div className="text-sm font-bold text-white">+{MECHA_NEXODO_BALANCE.extraHp}</div>
                   <div className="text-[10px] uppercase text-white/50">Láser</div>
-                  <div className="text-sm font-bold text-white">{MECHA_NEXODO_BALANCE.laserTickDamage} daño/tick</div>
+                  <div className="text-sm font-bold text-white">{MECHA_NEXODO_BALANCE.laserTotalDamage} daño total ({MECHA_NEXODO_BALANCE.laserTotalDamage / (MECHA_NEXODO_BALANCE.laserDurationMs / 1000)} DPS)</div>
                 </div>
                 <div className="p-3 border border-white/10 bg-white/5 rounded col-span-2 flex gap-3 items-center">
                   {selectedMechaPilot ? (
