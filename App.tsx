@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction, AttackKind, GameMetrics } from './types';
+import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction, GameMetrics } from './types';
 import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE, isMeleeSingleUnitCard } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
@@ -8,6 +8,7 @@ import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
 import { applyAracnoAbility } from './engine/abilities/aracno';
 import { applyMothershipAbility, getMothershipCooldownMs, getMothershipPayloadIntervalMs } from './engine/abilities/mothership';
 import { applyMechaNexodoAbility } from './engine/abilities/mecha_nexodo';
+import { inferAttackKindFromCard } from './engine/utils/attackKind';
 import Arena from './components/Arena';
 import Codex from './components/Codex';
 import DeckEditor from './components/DeckEditor';
@@ -46,16 +47,6 @@ const rollRandomAbilitySelection = (): SelectedSpecialAbility => {
 };
 
 const aiController = new NexoAI();
-
-const SPORE_CARD_PATTERN = /(spore|spora|venom|venen|poison|toxin)/i;
-
-const inferAttackKindFromCard = (card: Card): AttackKind => {
-  if (card.damage < 0) return 'heal';
-  if (SPORE_CARD_PATTERN.test(card.id)) return 'spore';
-  if (card.projectileType === 'none') return 'melee';
-  if (card.projectileType === 'laser' || card.projectileType === 'beam') return 'laser';
-  return 'damage';
-};
 
 const createEmptyMetrics = (): GameMetrics => ({
   totalDamage: {

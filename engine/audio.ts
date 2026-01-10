@@ -1,4 +1,5 @@
 import { AlienSubtype, AttackKind, Faction, ProjectileStyle, VisualFamily } from '../types';
+import { inferAttackKindFromStyle, SPORE_CARD_PATTERN } from './utils/attackKind';
 
 type OscillatorType = 'sine' | 'square' | 'sawtooth' | 'triangle';
 
@@ -54,16 +55,12 @@ const throttleDefaults: Partial<Record<SfxKind, number>> = {
 const ALIEN_SUBTYPES = new Set<string>(Object.values(AlienSubtype));
 const VISUAL_FAMILIES = new Set<VisualFamily>(['humano', 'ciber', 'organico']);
 
-const SPORE_PATTERN = /(spore|spora|venom|venen|poison|toxin)/i;
-
 const resolveAttackKind = (type: SfxKind, options: PlaySfxOptions): AttackKind => {
   if (options.attackKind) return options.attackKind;
   if (type === 'heal' || type === 'healing_field') return 'heal';
   const hintedCardId = options.cardId;
-  if (hintedCardId && SPORE_PATTERN.test(hintedCardId)) return 'spore';
-  if (options.style === 'none') return 'melee';
-  if (options.style === 'laser' || options.style === 'beam') return 'laser';
-  return 'damage';
+  if (hintedCardId && SPORE_CARD_PATTERN.test(hintedCardId)) return 'spore';
+  return inferAttackKindFromStyle(options.style);
 };
 
 const resolveSpeciesKey = (options: PlaySfxOptions): string => {

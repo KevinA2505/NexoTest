@@ -1,8 +1,9 @@
 
-import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, AttackKind, ProjectileStyle, VisualFamily, AlienSubtype } from '../types';
+import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, VisualFamily, AlienSubtype } from '../types';
 import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF, MECHA_NEXODO_BALANCE } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 import { playSfx } from './audio';
+import { inferAttackKindFromCard, inferAttackKindFromProjectile, inferAttackKindFromUnit } from './utils/attackKind';
 
 const BRIDGE_CENTERS = [BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y];
 
@@ -11,26 +12,6 @@ const isWithinBridgeGap = (y: number) => BRIDGE_CENTERS.some(center => Math.abs(
 const nearestBridgeCenter = (y: number) => BRIDGE_CENTERS.reduce((closest, current) => {
   return Math.abs(current - y) < Math.abs(closest - y) ? current : closest;
 });
-
-const SPORE_CARD_PATTERN = /(spore|spora|venom|venen|poison|toxin)/i;
-
-const getAttackKindFromStyle = (style?: ProjectileStyle): AttackKind => {
-  if (style === 'none') return 'melee';
-  if (style === 'laser' || style === 'beam') return 'laser';
-  return 'damage';
-};
-
-const resolveAttackKindFromUnit = (unit: GameUnit): AttackKind => {
-  if (unit.onHitEffect === 'heal') return 'heal';
-  if (unit.onHitEffect === 'poison' || SPORE_CARD_PATTERN.test(unit.cardId)) return 'spore';
-  return getAttackKindFromStyle(unit.projectileType);
-};
-
-const resolveAttackKindFromProjectile = (projectile: Projectile): AttackKind => {
-  if (projectile.onHitEffect === 'heal') return 'heal';
-  if (projectile.onHitEffect === 'poison' || SPORE_CARD_PATTERN.test(projectile.sourceCardId ?? '')) return 'spore';
-  return getAttackKindFromStyle(projectile.style);
-};
 
 const resolveSubfaction = (
   faction: Faction | undefined,
@@ -335,7 +316,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             sourceAlienSubtype: card.alienSubtype,
             sourceVisualFamily: card.visualFamily,
             sourceCardId: card.id,
-            attackKind: card.damage < 0 ? 'heal' : (SPORE_CARD_PATTERN.test(card.id) ? 'spore' : getAttackKindFromStyle(card.projectileType))
+            attackKind: inferAttackKindFromCard(card)
           });
         }
       }
@@ -430,14 +411,14 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
           sourceAlienSubtype: updatedUnit.alienSubtype,
           sourceVisualFamily: updatedUnit.visualFamily,
           sourceCardId: updatedUnit.cardId,
-          attackKind: resolveAttackKindFromUnit(updatedUnit)
+          attackKind: inferAttackKindFromUnit(updatedUnit)
         });
         playSfx('summon', {
           at: newState.time,
           faction: updatedUnit.faction,
           style: updatedUnit.projectileType,
           subfaction: resolveSubfaction(updatedUnit.faction, updatedUnit.visualFamily, updatedUnit.alienSubtype),
-          attackKind: resolveAttackKindFromUnit(updatedUnit),
+          attackKind: inferAttackKindFromUnit(updatedUnit),
           cardId: updatedUnit.cardId
         });
       }
@@ -546,7 +527,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             sourceAlienSubtype: updatedUnit.alienSubtype,
             sourceVisualFamily: updatedUnit.visualFamily,
             sourceCardId: updatedUnit.cardId,
-            attackKind: resolveAttackKindFromUnit(updatedUnit)
+            attackKind: inferAttackKindFromUnit(updatedUnit)
           });
 
           if (updatedUnit.projectileType !== 'none' && updatedUnit.projectileType !== 'beam') {
@@ -766,7 +747,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             sourceAlienSubtype: projectileCard?.alienSubtype,
             sourceVisualFamily: projectileCard?.visualFamily,
             sourceCardId: p.sourceCardId,
-            attackKind: resolveAttackKindFromProjectile(p)
+            attackKind: inferAttackKindFromProjectile(p)
           });
         }
       } else {
@@ -793,7 +774,7 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
             sourceAlienSubtype: projectileCard?.alienSubtype,
             sourceVisualFamily: projectileCard?.visualFamily,
             sourceCardId: p.sourceCardId,
-            attackKind: resolveAttackKindFromProjectile(p)
+            attackKind: inferAttackKindFromProjectile(p)
           });
         }
 
@@ -879,7 +860,7 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
   if (actualTarget.type === UnitType.AIR && attacker.type === UnitType.GROUND && attacker.projectileType === 'none') return;
 
   const isTargetUnit = 'stunTimer' in actualTarget;
-  const attackerAttackKind = resolveAttackKindFromUnit(attacker);
+  const attackerAttackKind = inferAttackKindFromUnit(attacker);
 
   if (attacker.onHitEffect === 'heal') {
     if (isTargetUnit && actualTarget.team === attacker.team) {
