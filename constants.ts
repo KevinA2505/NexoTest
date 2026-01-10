@@ -1474,12 +1474,15 @@ export const ARACNO_HIVE_ABILITY_BALANCE = {
   defaultMode: 'lethal'
 } as const;
 
+const MORALE_BOOST_RADIUS = CARD_LIBRARY.find(card => card.id === 'healing_matrix')?.aoeRadius ?? 180;
+
 export const MECHA_NEXODO_BALANCE = {
   activationCost: 6,
   extraHp: 720,
   laserTotalDamage: 260,
   laserDurationMs: 5000,
-  laserCooldownMs: 5000,
+  laserCooldownMs: 3000,
+  laserRange: Math.round(MORALE_BOOST_RADIUS * 0.75),
   laserColor: '#ff4bd8',
   shieldColor: '#63d6ff',
   frameColor: '#1d7eea'

@@ -71,8 +71,8 @@ export const applyMechaNexodoAbility = (
     mechaMode,
     mechaHp: MECHA_NEXODO_BALANCE.extraHp,
     mechaMaxHp: MECHA_NEXODO_BALANCE.extraHp,
-    mechaLaserCooldownMs: MECHA_NEXODO_BALANCE.laserCooldownMs,
-    mechaLaserActiveMs: mechaMode === 'laser' ? MECHA_NEXODO_BALANCE.laserDurationMs : 0,
+    mechaLaserCooldownMs: mechaMode === 'laser' ? 0 : MECHA_NEXODO_BALANCE.laserCooldownMs,
+    mechaLaserActiveMs: 0,
     mechaPilotCardId: pilotCard.id
   };
 
