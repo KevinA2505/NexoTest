@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, Team, Card, GameUnit, Tower, TowerType, UnitType, TargetPreference, VisualEffect, SelectedSpecialAbility, ArenaState, Faction, AttackKind, GameMetrics } from './types';
-import { CARD_LIBRARY, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE, isMeleeSingleUnitCard } from './constants';
+import { CARD_BY_ID, INITIAL_TOWERS_PLAYER, INITIAL_TOWERS_AI, MAX_ENERGY, ARENA_HEIGHT, ARENA_WIDTH, GAME_DURATION, SPECIAL_ABILITIES, createDefaultAbilityConfig, findAbilityById, EMP_ABILITY_BALANCE, PLAYABLE_CARD_LIBRARY, ARACNO_HIVE_ABILITY_BALANCE, isMeleeSingleUnitCard } from './constants';
 import { updateGame } from './engine/GameLoop';
 import { NexoAI } from './engine/AI';
 import { applyEmpAbility, getEmpModeConfig } from './engine/abilities/emp';
@@ -185,7 +185,7 @@ const App: React.FC = () => {
       }
 
       if (activeAbility.id === 'mecha_nexodo') {
-        const pilotCard = selectedPilotCardId ? CARD_LIBRARY.find(c => c.id === selectedPilotCardId) : undefined;
+        const pilotCard = selectedPilotCardId ? CARD_BY_ID.get(selectedPilotCardId) : undefined;
         if (!pilotCard || !isMeleeSingleUnitCard(pilotCard)) return prev;
       }
 
@@ -194,7 +194,7 @@ const App: React.FC = () => {
   };
 
   const spawnUnits = useCallback((cardId: string, team: Team, x: number, y: number) => {
-    const card = CARD_LIBRARY.find(c => c.id === cardId);
+    const card = CARD_BY_ID.get(cardId);
     if (!card) return;
 
     if (card.type === UnitType.SPELL) {
@@ -287,7 +287,7 @@ const App: React.FC = () => {
 
   const attemptDeployCard = useCallback((cardIdx: number, x: number, y: number) => {
       const cardId = gameState.playerHand[cardIdx];
-      const card = CARD_LIBRARY.find(c => c.id === cardId);
+      const card = CARD_BY_ID.get(cardId);
       if (!card) return false;
       if (gameState.status !== 'PLAYING') return false;
       if (card.type !== UnitType.SPELL && x > ARENA_WIDTH / 2) return false;
@@ -385,7 +385,7 @@ const App: React.FC = () => {
   const handleAIDeploy = (cardId: string, x: number, y: number) => {
     spawnUnits(cardId, Team.AI, x, y);
     setGameState(prev => {
-        const card = CARD_LIBRARY.find(c => c.id === cardId);
+        const card = CARD_BY_ID.get(cardId);
         const currentIdx = prev.aiHand.indexOf(cardId);
         const nextInDeck = prev.aiDeck[0];
         const newDeck = [...prev.aiDeck.slice(1), cardId];
@@ -433,7 +433,7 @@ const App: React.FC = () => {
 
       if (selection.id === 'mecha_nexodo') {
         const pilotCardId = selection.configuration.pilotCard as string | undefined;
-        const pilotCard = pilotCardId ? CARD_LIBRARY.find(c => c.id === pilotCardId) : undefined;
+        const pilotCard = pilotCardId ? CARD_BY_ID.get(pilotCardId) : undefined;
         if (!pilotCard || !isMeleeSingleUnitCard(pilotCard)) return prev;
       }
 
@@ -592,7 +592,7 @@ const App: React.FC = () => {
 
         <div className="flex-1 flex flex-col gap-3">
           {gameState.status === 'PLAYING' && gameState.playerHand.map((cardId, idx) => {
-            const card = CARD_LIBRARY.find(c => c.id === cardId);
+            const card = CARD_BY_ID.get(cardId);
             const isSelected = selectedCardIdx === idx;
             const canAfford = card ? gameState.playerEnergy >= card.cost : false;
             if (!card) return null;
@@ -632,7 +632,7 @@ const App: React.FC = () => {
             <div className="mt-2 flex flex-col items-center opacity-40">
               <span className="text-[7px] text-white/40 uppercase mb-1">Sig.</span>
               {(() => {
-                const nextCard = CARD_LIBRARY.find(c => c.id === gameState.playerDeck[0]);
+                const nextCard = gameState.playerDeck[0] ? CARD_BY_ID.get(gameState.playerDeck[0]) : undefined;
                 return nextCard ? (
                 <div className="w-full">
                   <CardPreview
