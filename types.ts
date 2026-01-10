@@ -125,6 +125,7 @@ export interface GameUnit {
   mechaMaxHp?: number;
   mechaLaserCooldownMs?: number;
   mechaLaserActiveMs?: number;
+  mechaLaserTickMs?: number;
   mechaPilotCardId?: string;
 }
 

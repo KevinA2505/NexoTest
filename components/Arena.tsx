@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useMemo } from 'react';
 import { AlienSubtype, Faction, GameState, GameUnit, ProjectileStyle, Team, TowerType, UnitType } from '../types';
-import { ARENA_WIDTH, ARENA_HEIGHT, BRIDGE_GAP_HALF, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_X } from '../constants';
+import { ARENA_WIDTH, ARENA_HEIGHT, BRIDGE_GAP_HALF, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_X, MECHA_NEXODO_BALANCE } from '../constants';
 
 interface ArenaProps {
   state: GameState;
@@ -67,6 +67,21 @@ const Arena: React.FC<ArenaProps> = ({ state, onDeploy, dragPreview, onBoundsCha
 
     if (unit.type === UnitType.AIR) {
         ctx.translate(0, Math.sin(Date.now() / 300) * 5);
+    }
+
+    if (unit.isMecha && unit.mechaMode === 'shield' && (unit.mechaHp ?? 0) > 0) {
+      const pulse = 0.6 + Math.sin(Date.now() / 180) * 0.4;
+      ctx.save();
+      ctx.strokeStyle = MECHA_NEXODO_BALANCE.shieldColor;
+      ctx.lineWidth = 2 + pulse * 1.5;
+      ctx.shadowBlur = 18;
+      ctx.shadowColor = MECHA_NEXODO_BALANCE.shieldColor;
+      ctx.setLineDash([6, 4]);
+      ctx.beginPath();
+      ctx.arc(0, 0, size + 10 + pulse * 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     if (unit.isMothership) {

@@ -1,6 +1,6 @@
 
 import { GameState, Team, GameUnit, Tower, TowerType, Projectile, UnitType, TargetPreference, VisualEffect, Card, ActiveSpell, Faction, AttackKind, ProjectileStyle, VisualFamily, AlienSubtype } from '../types';
-import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF } from '../constants';
+import { ARENA_WIDTH, ARENA_HEIGHT, BASE_ENERGY_GAIN_RATE, MAX_ENERGY, GAME_DURATION, CARD_LIBRARY, BRIDGE_X, BRIDGE_TOP_Y, BRIDGE_BOTTOM_Y, BRIDGE_GAP_HALF, MECHA_NEXODO_BALANCE } from '../constants';
 import { createUnitsFromCard, getMothershipPayloadIntervalMs } from './abilities/mothership';
 import { playSfx } from './audio';
 
@@ -100,6 +100,60 @@ const dispatchSfxForEffect = (effect: VisualEffect, at: number) => {
 const addEffect = (state: GameState, effect: VisualEffect) => {
   state.effects.push(effect);
   dispatchSfxForEffect(effect, state.time);
+};
+
+const applyDamageToUnit = (unit: GameUnit, damage: number) => {
+  if (damage <= 0) {
+    return { totalDamage: 0, hpDamage: 0, mechaDamage: 0 };
+  }
+
+  let remainingDamage = damage;
+  let mechaDamage = 0;
+
+  if (unit.isMecha && (unit.mechaHp ?? 0) > 0) {
+    mechaDamage = Math.min(unit.mechaHp ?? 0, remainingDamage);
+    unit.mechaHp = Math.max(0, (unit.mechaHp ?? 0) - mechaDamage);
+    remainingDamage -= mechaDamage;
+  }
+
+  const prevHp = unit.hp;
+  unit.hp = Math.max(0, unit.hp - remainingDamage);
+  const hpDamage = prevHp - unit.hp;
+
+  return { totalDamage: mechaDamage + hpDamage, hpDamage, mechaDamage };
+};
+
+const findEnemyTarget = (unit: GameUnit, state: GameState): { x: number, y: number, id: string } | null => {
+  const enemyTeam = unit.team === Team.PLAYER ? Team.AI : Team.PLAYER;
+  const potentialTargets: (GameUnit | Tower)[] = [];
+
+  if (unit.targetPref !== TargetPreference.TOWERS) {
+    state.units.forEach(u => {
+      if (u.team === enemyTeam && !u.isDead) {
+        if (unit.type === UnitType.GROUND && unit.projectileType === 'none' && u.type === UnitType.AIR) return;
+        if (unit.targetPref === TargetPreference.AIR && u.type !== UnitType.AIR) return;
+        potentialTargets.push(u);
+      }
+    });
+  }
+
+  state.towers.forEach(t => {
+    if (t.team === enemyTeam && !t.isDead && !t.locked) {
+      potentialTargets.push(t);
+    }
+  });
+
+  if (potentialTargets.length > 0) {
+    const sorted = potentialTargets.sort((a, b) => {
+      const distA = Math.hypot(a.x - unit.x, a.y - unit.y);
+      const distB = Math.hypot(b.x - unit.x, b.y - unit.y);
+      return distA - distB;
+    });
+    const target = sorted[0];
+    return { x: target.x, y: target.y, id: target.id };
+  }
+
+  return null;
 };
 
 export const updateGame = (state: GameState, deltaTime: number): GameState => {
@@ -254,11 +308,17 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
               const maxHp = (t as GameUnit).maxHp ?? (t as Tower).maxHp ?? t.hp;
               t.hp = Math.min(maxHp, t.hp + Math.abs(card.damage));
             } else {
-              const prevHp = t.hp;
-              t.hp -= card.damage;
-              const dealtDamage = Math.min(card.damage, prevHp);
-              registerDamage(newState, t.team, dealtDamage);
-              registerDamageDealt(newState, ps.team, dealtDamage, isTowerTarget(t as GameUnit | Tower));
+              if ('stunTimer' in t) {
+                const { totalDamage } = applyDamageToUnit(t as GameUnit, card.damage);
+                registerDamage(newState, t.team, totalDamage);
+                registerDamageDealt(newState, ps.team, totalDamage, false);
+              } else {
+                const prevHp = t.hp;
+                t.hp -= card.damage;
+                const dealtDamage = Math.min(card.damage, prevHp);
+                registerDamage(newState, t.team, dealtDamage);
+                registerDamageDealt(newState, ps.team, dealtDamage, isTowerTarget(t as GameUnit | Tower));
+              }
             }
           });
 
@@ -298,13 +358,19 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         );
         allies.forEach(a => {
           // daño negativo es curación
-          const prevHp = a.hp;
-          const nextHp = Math.max(0, Math.min(a.maxHp, a.hp - (card.damage / 5))); // Dividimos el daño total por los 5 ticks (1 por segundo aprox)
-          a.hp = nextHp;
-          const damageDelta = Math.max(0, prevHp - nextHp);
-          registerDamage(newState, a.team, damageDelta);
-          if (card.damage > 0) {
-            registerDamageDealt(newState, as.team, damageDelta, isTowerTarget(a));
+          if (card.damage > 0 && 'stunTimer' in a) {
+            const { totalDamage } = applyDamageToUnit(a as GameUnit, card.damage / 5);
+            registerDamage(newState, a.team, totalDamage);
+            registerDamageDealt(newState, as.team, totalDamage, false);
+          } else {
+            const prevHp = a.hp;
+            const nextHp = Math.max(0, Math.min(a.maxHp, a.hp - (card.damage / 5))); // Dividimos el daño total por los 5 ticks (1 por segundo aprox)
+            a.hp = nextHp;
+            const damageDelta = Math.max(0, prevHp - nextHp);
+            registerDamage(newState, a.team, damageDelta);
+            if (card.damage > 0) {
+              registerDamageDealt(newState, as.team, damageDelta, isTowerTarget(a));
+            }
           }
         });
       }
@@ -327,9 +393,8 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     }
 
     if (updatedUnit.decayPerMs) {
-      const prevHp = updatedUnit.hp;
-      updatedUnit.hp -= updatedUnit.decayPerMs * deltaTime;
-      registerDamage(newState, updatedUnit.team, Math.max(0, prevHp - updatedUnit.hp));
+      const { totalDamage } = applyDamageToUnit(updatedUnit, updatedUnit.decayPerMs * deltaTime);
+      registerDamage(newState, updatedUnit.team, totalDamage);
     }
 
     if (updatedUnit.spawnIntervalMs && updatedUnit.spawnCardId) {
@@ -384,9 +449,70 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
     }
     if (updatedUnit.dotTimer > 0) {
       updatedUnit.dotTimer -= deltaTime;
-      const prevHp = updatedUnit.hp;
-      updatedUnit.hp -= 0.12 * (deltaTime / 16); 
-      registerDamage(newState, updatedUnit.team, Math.max(0, prevHp - updatedUnit.hp));
+      const { totalDamage } = applyDamageToUnit(updatedUnit, 0.12 * (deltaTime / 16));
+      registerDamage(newState, updatedUnit.team, totalDamage);
+    }
+
+    if (updatedUnit.isMecha && updatedUnit.mechaMode === 'laser') {
+      if ((updatedUnit.mechaLaserActiveMs ?? 0) > 0) {
+        updatedUnit.mechaLaserActiveMs = Math.max(0, (updatedUnit.mechaLaserActiveMs ?? 0) - deltaTime);
+        updatedUnit.mechaLaserTickMs = (updatedUnit.mechaLaserTickMs ?? 0) - deltaTime;
+
+        if ((updatedUnit.mechaLaserTickMs ?? 0) <= 0) {
+          const laserTarget = findEnemyTarget(updatedUnit, newState);
+          if (laserTarget) {
+            const laserTargetEntity = newState.units.find(u => u.id === laserTarget.id) || newState.towers.find(t => t.id === laserTarget.id);
+            const dist = Math.hypot(laserTarget.x - updatedUnit.x, laserTarget.y - updatedUnit.y);
+
+            if (laserTargetEntity && dist <= updatedUnit.range) {
+              if ('stunTimer' in laserTargetEntity) {
+                const { totalDamage } = applyDamageToUnit(laserTargetEntity as GameUnit, MECHA_NEXODO_BALANCE.laserTickDamage);
+                registerDamage(newState, laserTargetEntity.team, totalDamage);
+                registerDamageDealt(newState, updatedUnit.team, totalDamage, false);
+              } else {
+                const prevHp = laserTargetEntity.hp;
+                laserTargetEntity.hp -= MECHA_NEXODO_BALANCE.laserTickDamage;
+                const dealtDamage = Math.min(MECHA_NEXODO_BALANCE.laserTickDamage, prevHp);
+                registerDamage(newState, laserTargetEntity.team, dealtDamage);
+                registerDamageDealt(newState, updatedUnit.team, dealtDamage, true);
+              }
+
+              addEffect(newState, {
+                id: 'mecha-laser-' + Math.random(),
+                x: laserTarget.x,
+                y: laserTarget.y,
+                startX: updatedUnit.x,
+                startY: updatedUnit.y,
+                type: 'laser_beam',
+                timer: 200,
+                maxTimer: 200,
+                color: MECHA_NEXODO_BALANCE.laserColor,
+                sourceFaction: updatedUnit.faction,
+                sourceStyle: 'beam',
+                sourceAlienSubtype: updatedUnit.alienSubtype,
+                sourceVisualFamily: updatedUnit.visualFamily,
+                sourceCardId: updatedUnit.cardId,
+                attackKind: 'laser'
+              });
+            }
+          }
+
+          updatedUnit.mechaLaserTickMs = 1000;
+        }
+
+        if ((updatedUnit.mechaLaserActiveMs ?? 0) === 0) {
+          updatedUnit.mechaLaserCooldownMs = MECHA_NEXODO_BALANCE.laserCooldownMs;
+        }
+      } else {
+        if ((updatedUnit.mechaLaserCooldownMs ?? 0) > 0) {
+          updatedUnit.mechaLaserCooldownMs = Math.max(0, (updatedUnit.mechaLaserCooldownMs ?? 0) - deltaTime);
+        }
+
+        if ((updatedUnit.mechaLaserCooldownMs ?? 0) <= 0) {
+          updatedUnit.mechaLaserActiveMs = MECHA_NEXODO_BALANCE.laserDurationMs;
+          updatedUnit.mechaLaserTickMs = 0;
+        }
+      }
     }
 
     if (updatedUnit.isMothership && updatedUnit.payloadCardId) {
@@ -647,11 +773,17 @@ export const updateGame = (state: GameState, deltaTime: number): GameState => {
         if (p.onHitEffect === 'poison' && isTargetUnit && p.onHitDotDurationMs) {
           target.dotTimer = Math.max(target.dotTimer, p.onHitDotDurationMs);
         }
-        const prevHp = target.hp;
-        target.hp -= p.damage;
-        const dealtDamage = Math.min(p.damage, prevHp);
-        registerDamage(newState, target.team, dealtDamage);
-        registerDamageDealt(newState, p.team, dealtDamage, isTowerTarget(target));
+        if ('stunTimer' in target) {
+          const { totalDamage } = applyDamageToUnit(target as GameUnit, p.damage);
+          registerDamage(newState, target.team, totalDamage);
+          registerDamageDealt(newState, p.team, totalDamage, false);
+        } else {
+          const prevHp = target.hp;
+          target.hp -= p.damage;
+          const dealtDamage = Math.min(p.damage, prevHp);
+          registerDamage(newState, target.team, dealtDamage);
+          registerDamageDealt(newState, p.team, dealtDamage, isTowerTarget(target));
+        }
           addEffect(newState, {
             id: Math.random().toString(),
             x: target.x, y: target.y,
@@ -765,12 +897,20 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
         return Math.hypot(t.x - target.x, t.y - target.y) <= attacker.aoeRadius;
     });
     targets.forEach(t => {
-      const prevHp = t.hp;
-      t.hp -= attacker.damage;
-      if (attacker.damage > 0) {
-        const dealtDamage = Math.min(attacker.damage, prevHp);
-        registerDamage(state, t.team, dealtDamage);
-        registerDamageDealt(state, attacker.team, dealtDamage, isTowerTarget(t));
+      if ('stunTimer' in t) {
+        const { totalDamage } = applyDamageToUnit(t as GameUnit, attacker.damage);
+        if (attacker.damage > 0) {
+          registerDamage(state, t.team, totalDamage);
+          registerDamageDealt(state, attacker.team, totalDamage, false);
+        }
+      } else {
+        const prevHp = t.hp;
+        t.hp -= attacker.damage;
+        if (attacker.damage > 0) {
+          const dealtDamage = Math.min(attacker.damage, prevHp);
+          registerDamage(state, t.team, dealtDamage);
+          registerDamageDealt(state, attacker.team, dealtDamage, isTowerTarget(t));
+        }
       }
     });
   } else if (attacker.projectileType === 'beam' || attacker.projectileType === 'none') {
@@ -778,11 +918,17 @@ const applyDamage = (attacker: GameUnit, target: any, state: GameState) => {
       actualTarget.hp = Math.min(actualTarget.maxHp, actualTarget.hp + Math.abs(attacker.damage));
       addEffect(state, { id: Math.random().toString(), x: actualTarget.x, y: actualTarget.y, type: 'heal', timer: 400, maxTimer: 400, color: '#00ffaa', sourceFaction: attacker.faction, sourceStyle: attacker.projectileType, sourceAlienSubtype: attacker.alienSubtype, sourceVisualFamily: attacker.visualFamily, sourceCardId: attacker.cardId, attackKind: 'heal' });
     } else {
-      const prevHp = actualTarget.hp;
-      actualTarget.hp -= attacker.damage;
-      const dealtDamage = Math.min(attacker.damage, prevHp);
-      registerDamage(state, actualTarget.team, dealtDamage);
-      registerDamageDealt(state, attacker.team, dealtDamage, isTowerTarget(actualTarget));
+      if ('stunTimer' in actualTarget) {
+        const { totalDamage } = applyDamageToUnit(actualTarget as GameUnit, attacker.damage);
+        registerDamage(state, actualTarget.team, totalDamage);
+        registerDamageDealt(state, attacker.team, totalDamage, false);
+      } else {
+        const prevHp = actualTarget.hp;
+        actualTarget.hp -= attacker.damage;
+        const dealtDamage = Math.min(attacker.damage, prevHp);
+        registerDamage(state, actualTarget.team, dealtDamage);
+        registerDamageDealt(state, attacker.team, dealtDamage, isTowerTarget(actualTarget));
+      }
     }
   }
 
