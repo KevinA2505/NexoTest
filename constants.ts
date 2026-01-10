@@ -1479,7 +1479,7 @@ const MORALE_BOOST_RADIUS = CARD_LIBRARY.find(card => card.id === 'healing_matri
 export const MECHA_NEXODO_BALANCE = {
   activationCost: 6,
   extraHp: 720,
-  laserTotalDamage: 260,
+  laserTotalDamage: 300,
   laserDurationMs: 5000,
   laserCooldownMs: 3000,
   laserRange: Math.round(MORALE_BOOST_RADIUS * 0.75),
